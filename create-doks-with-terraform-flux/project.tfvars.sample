@@ -1,0 +1,15 @@
+# DOKS
+do_token = ""
+doks_cluster_name = ""
+# doks_cluster_region = ""
+# doks_cluster_version= ""
+# doks_cluster_pool_size= ""
+# doks_cluster_pool_nodes = {}
+
+# Github
+github_owner = ""
+github_token = ""
+github_repository_name = ""
+github_repository_target_path = ""
+# github_repository_visibility = ""
+# github_repository_branch = ""

@@ -13,8 +13,8 @@ This section contains information about how we can bootstrap **DOKS** and **Flux
 
 ### Requirements
 
-1. A DigitalOcean [account](https://cloud.digitalocean.com) is required in order to create the access keys and provision the DOKS cluster.
-2. Next a [Github](https://github.com/) account is needed.
+1. A DigitalOcean [account](https://cloud.digitalocean.com) to create the access keys and provision the DOKS cluster.
+2. A [Github](https://github.com/) account.
 3. A git client has to be installed as well depending on the distro.
   
     E.g.: on MacOS it can be installed via Homebrew:
@@ -112,17 +112,12 @@ This section contains information about how we can bootstrap **DOKS** and **Flux
     - Finding gavinbunney/kubectl versions matching "1.11.2"...
     ...
     ```
-6. Let's give our DOKS cluster a name as well:
-
-    ```bash
-    export TF_VAR_doks_cluster_name="doks-fluxcd-cluster"
-    ```
-7. Going furher let's create a `plan` in order to inspect the infrastructure changes:
+6. Going furher let's create a `plan` in order to inspect the infrastructure changes:
 
     ```bash
     terraform plan
     ```
-8. If everything seems alright then `apply` the changes with: 
+7. If everything seems alright then `apply` the changes with: 
    
     ```bash
     terraform apply

@@ -1,5 +1,5 @@
 # Store the state file using DO Spaces
-# DO Spaces is similar to AWS S3 so the meaning of the properties used down below is the same
+# DO Spaces is a S3-compatible object storage so the meaning of the properties used down below is the same
 
 terraform {
   backend "s3" {

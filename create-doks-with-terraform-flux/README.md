@@ -1,6 +1,6 @@
 # Gitops stack using DOKS and Flux CD
 
-This blueprint will guide you step by step on how to spin up a single DOKS (DigitalOcean Kubernetes) cluster and Flux CD for managing application deployments in a GitOps fashion. In the end we will also tell [Flux CD](https://fluxcd.io)  to perform a basic deployment of the now ubiquitous `busybox` Docker application.
+This blueprint will guide you step by step on how to spin up a single DOKS (DigitalOcean Kubernetes) cluster and Flux CD for managing application deployments in a GitOps fashion. In the end we will also tell [Flux CD](https://fluxcd.io) to perform a basic deployment of the now ubiquitous `busybox` Docker application.
 
 [Terraform](https://www.terraform.io) was chosen to write `infrastructure as code` using declarative configuration files which allows for concise descriptions of resources using blocks, arguments, and expressions. In our guide it will be responsible with spinning up the DOKS (DigitalOcean Kubernetes) cluster as well as [Flux CD](https://fluxcd.io).
 
@@ -9,7 +9,7 @@ This blueprint will guide you step by step on how to spin up a single DOKS (Digi
 
 ## Bootstrapping DOKS and Flux CD
 
-This section contains information about how we can bootstrap **DOKS** and **Flux CD** via **Terraform** using **Github** as a SCM provider and source of truth.
+This section contains information about how we can bootstrap **DOKS** and **Flux CD** via **Terraform** using **Github** as a SCM provider and source of truth. The bootstrap process will create for us a DOKS cluster alongside with a new Github repository and branch where all the manifests used to provision [Flux CD](https://fluxcd.io) will be stored. The same repository will be used to store our Kubernetes custom application deployment manifests that will be managed automatically via [Flux CD](https://fluxcd.io).
 
 ### Requirements
 
@@ -33,16 +33,16 @@ This section contains information about how we can bootstrap **DOKS** and **Flux
 
 ### Installation steps
 
-1. Start by creating a [Github personal access token](https://github.com/settings/tokens) that has the `repo` permissions set. Copy the token value and save it in a local environment variable as we will need it later on. While we're at this step we're going to fill in some other required details like the owner, the name and the path in the git repository where Flux CD manifests will be created (make sure to replace the `<>` placeholders accordingly):
+1. Start by creating a [Github personal access token](https://github.com/settings/tokens) that has the `repo` permissions set. The Terraform module provided by this blueprint will automatically create for us a Github repository and branch where all the required Kubernetes manifests will be stored. In order to achieve this we must create a few special environment variables so make sure to replace the `<>` placeholders accordingly:
 
     ```bash
-    export TF_VAR_github_owner="<github_owner>"
-    export TF_VAR_github_token="<github_personal_access_token>"
-    export TF_VAR_github_repository_name="<git_repository_name>"
-    export TF_VAR_github_repository_branch="<git_repository_branch>"
-    export TF_VAR_github_repository_target_path="<flux_cd_sync_target_path>"
+    export TF_VAR_github_owner="<github_username>"                              # should be pretty self explanatory
+    export TF_VAR_github_token="<github_personal_access_token>"                 # should be pretty self explanatory
+    export TF_VAR_github_repository_name="<git_repository_name>"                # the desired git repository name
+    export TF_VAR_github_repository_branch="<git_repository_branch>"            # branch name to be created
+    export TF_VAR_github_repository_target_path="<flux_cd_sync_target_path>"    # the K8S manifests used to provision Flux CD will be stored in this path
     ```
-2. Let's go next with setting up the required stuff on the [DigitalOcean](https://cloud.digitalocean.com) side by creating the necessary tokens first. One is needed for creating/managing the DOKS cluster and another one for [DO Spaces](https://cloud.digitalocean.com/spaces) (similar to AWS S3). The latter is needed for storing the Terraform state file.
+2. Let's go next with setting up the required stuff on the [DigitalOcean](https://cloud.digitalocean.com) side by creating the necessary tokens first. One is needed for creating/managing the DOKS cluster and another one for [DO Spaces](https://cloud.digitalocean.com/spaces) (S3-compatibe object storage). The latter is needed for storing the Terraform state file.
 
     From your DigitalOcean account go to the [API](https://cloud.digitalocean.com/account/api) section in order to generate the tokens. 
     
@@ -454,7 +454,7 @@ Notes:
 - **The above will destroy your target git repository as well so please follow the safer method described below**
 - The `terraform destroy` operation has an issue and it will hang when it will try to clean up the Flux CD namespace - seems to be a bug somewhere at this time of writing. 
 
-Another approach and a safer one will be to clean the resources in a step by step manner.
+Another approach and a safer one will be to clean the resources in a selective manner.
 
 ### Flux CD uninstall
 

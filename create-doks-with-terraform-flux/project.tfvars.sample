@@ -4,7 +4,7 @@ doks_cluster_name = ""
 # doks_cluster_region = ""
 # doks_cluster_version= ""
 # doks_cluster_pool_size= ""
-# doks_cluster_pool_nodes = {}
+# doks_cluster_pool_node_count = 2
 
 # Github
 github_owner = ""

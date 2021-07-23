@@ -29,13 +29,10 @@ variable "doks_cluster_pool_size" {
   description = "DOKS cluster node pool size"
 }
 
-variable "doks_cluster_pool_nodes" {
+variable "doks_cluster_pool_node_count" {
   type = map
-  default = {
-    min = 3
-    max = 5
-  }
-  description = "DOKS cluster node pool limits"
+  default = 2   # need 2 nodes at least
+  description = "DOKS cluster node count inside the pool"
 }
 
 # Github

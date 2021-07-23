@@ -28,9 +28,7 @@ resource "digitalocean_kubernetes_cluster" "primary" {
   node_pool {
     name       = "${var.doks_cluster_name}-pool"
     size       = var.doks_cluster_pool_size
-    auto_scale = true
-    min_nodes  = var.doks_cluster_pool_nodes.min
-    max_nodes  = var.doks_cluster_pool_nodes.max
+    node_count = var.doks_cluster_pool_node_count
   }
 }
 

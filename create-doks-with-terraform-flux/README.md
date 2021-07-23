@@ -152,25 +152,7 @@ A new git repository should be created as well for you containing the Flux CD cl
 
 ![GIT repo state](content/img/flux_git_res.png)
 
-## Overriding default variables for Terraform
-
-If some of the default values used by the Terraform module provided in this repository need to be modified then a `project.tfvars` file needs to be created (this **must not** be commited in git as it may contain sensitive data - the `.gitignore` is already set to ignore this kind of file).
-
-There's a [project.tfvars.sample](project.tfvars.sample) file provided in this repo so we can just rename it:
-
-```bash
-cp project.tfvars.sample project.tfvars
-```
-And then fill in the right values for the project ([variables.tf](variables.tf) contains the description for each variable).
-
-Now we're going to use this file to provide the required input variables and update the infrastructure as seen below:
-
-```bash
-terraform plan -var-file="project.tfvars"
-terraform apply -var-file="project.tfvars"
-```
-
-## Required tools for inspecting the cluster and applications state
+## Inspecting the cluster and applications state
 In order to inspect the Kubernetes cluster as well as the Flux CD state and getting information about various components we need to install a few tools like:
 
 1. `doctl` for DigitalOcean interaction (most of the tasks that can be done via the DO account web interface can be accomplished using the CLI version as well) 
@@ -381,6 +363,12 @@ Please follow the steps below:
 
     git add -A && git commit -am "Adding the Flux CD Kustomize component"
     ```
+6. The final step would be to push the changes:
+
+    ```bash
+    git push origin $TF_VAR_github_repository_branch
+    ```
+
 ## Inspecting the results
 
 After a while the busybox namespace and associated pod should be created and running. Let's see what flux has to say about it first:
@@ -431,6 +419,22 @@ busybox1   1/1     Running   0          42s
 **Success!**
 
 # Final notes
+
+## Overriding default variables for Terraform
+
+The best way of doing it is to create a `project.tfvars` file. There's a [project.tfvars.sample](project.tfvars.sample) provided in this repo so we can just rename it:
+
+```bash
+cp project.tfvars.sample project.tfvars
+```
+And then fill in the right values for the project - [variables.tf](variables.tf) contains the description for each variable.
+
+Now we're going to use this file to override the desired input variables and update the infrastructure as seen below:
+
+```bash
+terraform plan -var-file="project.tfvars"
+terraform apply -var-file="project.tfvars"
+```
 
 ## Testing other Flux CD features
 

@@ -13,13 +13,13 @@ variable "doks_cluster_name" {
 
 variable "doks_cluster_region" {
   type = string
-  default = "lon1"
+  default = "lon1"  # Use a region that's more close to you from "doctl k8s options regions"
   description = "DOKS cluster region"
 }
 
 variable "doks_cluster_version" {
   type = string
-  default = "1.21.2-do.2" # Grab the latest version slug from `doctl kubernetes options versions`
+  default = "1.21.2-do.2" # Grab the latest version slug from "doctl kubernetes options versions"
   description = "Kubernetes version provided by DOKS"
 }
 
@@ -30,7 +30,7 @@ variable "doks_cluster_pool_size" {
 }
 
 variable "doks_cluster_pool_node_count" {
-  type = map
+  type = number
   default = 2   # need 2 nodes at least
   description = "DOKS cluster node count inside the pool"
 }
@@ -38,39 +38,39 @@ variable "doks_cluster_pool_node_count" {
 # Github
 variable "github_owner" {
   type        = string
-  description = "github owner"
+  description = "Github owner"
 }
 
 variable "github_token" {
   type        = string
-  description = "github token"
+  description = "Github token"
   sensitive = true
 }
 
 variable "github_ssh_pub_key" {
   type        = string
   default     = "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
-  description = "github ssh public key"
+  description = "Github SSH public key"
 }
 
 variable "github_repository_name" {
   type        = string
-  description = "github repository name"
+  description = "Github repository name"
 }
 
 variable "github_repository_visibility" {
   type        = string
   default     = "public"
-  description = "github repo visibility"
+  description = "Github repo visibility"
 }
 
 variable "github_repository_branch" {
   type        = string
   default     = "main"
-  description = "github repository branch name"
+  description = "Github repository branch name"
 }
 
 variable "github_repository_target_path" {
   type        = string
-  description = "flux sync target path"
+  description = "Flux sync target path"
 }

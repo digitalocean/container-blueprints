@@ -108,12 +108,18 @@ This section contains information about how we can bootstrap DOKS and Flux via T
     - Finding gavinbunney/kubectl versions matching "1.11.2"...
     ...
     ```
-6. Inspect the infrastructure changes:
+6. The DigitalOcean Kubernetes cluster initalization part provided by the Terraform module from this blueprint is using some default values for the cluster name, region and size. The `DOKS` section from the [variables.tf](variables.tf) file contains the default values. Let's override the cluster name and region as an example (use a region that's more close to you from `doctl k8s options regions`):
+   
+   ```bash
+   export TF_VAR_doks_cluster_name="<desired_cluster_name_here>"
+   export TF_VAR_doks_cluster_region="<desired_cluster_region_here>"
+   ```
+7. Inspect the infrastructure changes:
 
     ```bash
     terraform plan
     ```
-7. If everything seems alright, then `apply` the changes: 
+8. If everything seems alright, then `apply` the changes: 
    
     ```bash
     terraform apply
@@ -190,10 +196,8 @@ brew install kubectl
 Next we have to set `kubectl` context to point to our cluster created in this blueprint like this:
 
 ```bash
-doctl k8s cluster kubeconfig save <doks_cluster_name>
+doctl k8s cluster kubeconfig save $TF_VAR_doks_cluster_name
 ```
-
-Where `<doks_cluster_name>` must be replaced with the name given to the cluster in the `project.tfvars` file created in this blueprint (the variable is `doks_cluster_name`).
 
 Next check that the context was set and it's pointing to your Kubernetes cluster by running:
 
@@ -307,8 +311,8 @@ Please follow the steps below:
     apiVersion: v1
     kind: Namespace
     metadata:
-        creationTimestamp: null
-        name: busybox
+      creationTimestamp: null
+      name: busybox
     spec: {}
     status: {}
     EOF
@@ -319,19 +323,19 @@ Please follow the steps below:
     apiVersion: v1
     kind: Pod
     metadata:
-        name: busybox1
-        namespace: busybox
-    labels:
+      name: busybox1
+      namespace: busybox
+      labels:
         app: busybox1
     spec:
-        containers:
-        - image: busybox
-            command:
-              - sleep
-              - "3600"
-              imagePullPolicy: IfNotPresent
-            name: busybox
-        restartPolicy: Always
+      containers:
+      - image: busybox
+        command:
+          - sleep
+          - "3600"
+        imagePullPolicy: IfNotPresent
+        name: busybox
+      restartPolicy: Always
     EOF
 
     # busybox Kustomization yaml file
@@ -340,22 +344,22 @@ Please follow the steps below:
     kind: Kustomization
 
     commonLabels:
-        app: busybox
+      app: busybox
 
     namespace: busybox
 
     resources:
-       - busybox.yaml
-       - busybox-ns.yaml
+      - busybox.yaml
+      - busybox-ns.yaml
     EOF
 
     flux create kustomization "$FLUX_CD_KUSTOMIZE_NAME" \
-        --source="$FLUX_CD_SOURCE_NAME" \
-        --path="$APPS_PATH" \
-        --prune=true \
-        --validation=client \
-        --interval=5m \
-        --export > "./${TF_VAR_github_repository_target_path}/${FLUX_CD_KUSTOMIZE_NAME}-kustomization.yaml"
+       --source="$FLUX_CD_SOURCE_NAME" \
+       --path="$APPS_PATH" \
+       --prune=true \
+       --validation=client \
+       --interval=5m \
+       --export > "./${TF_VAR_github_repository_target_path}/${FLUX_CD_KUSTOMIZE_NAME}-kustomization.yaml"
 
     git add -A && git commit -am "Adding the Flux CD Kustomize component"
     ```
@@ -367,7 +371,34 @@ Please follow the steps below:
 
 ## Inspecting the results
 
-After a while, the busybox namespace and associated pod should be created and running. Let's see what Flux has to say about it first:
+After one minute (if using the default settings), the busybox namespace and associated pod should be created and running. If you don't want to wait we can always force reconciliation via:
+
+```bash
+flux reconcile source git $FLUX_CD_SOURCE_NAME
+flux reconcile kustomization $FLUX_CD_KUSTOMIZE_NAME
+```
+
+The output should be something similar to:
+
+```
+$ flux reconcile source git $FLUX_CD_SOURCE_NAME
+
+► annotating GitRepository busybox in flux-system namespace
+✔ GitRepository annotated
+◎ waiting for GitRepository reconciliation
+✔ GitRepository reconciliation completed
+✔ fetched revision main/b908f9b47b3a568ae346a74c277b23a7b7ef9602
+
+$ flux reconcile kustomization $FLUX_CD_KUSTOMIZE_NAME
+
+► annotating Kustomization busybox in flux-system namespace
+✔ Kustomization annotated
+◎ waiting for Kustomization reconciliation
+✔ Kustomization reconciliation completed
+✔ applied revision main/b908f9b47b3a568ae346a74c277b23a7b7ef9602
+```
+
+Let's see what Flux has to say about kustomizations:
 
 ```bash
 flux get kustomizations

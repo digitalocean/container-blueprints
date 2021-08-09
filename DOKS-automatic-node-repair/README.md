@@ -12,12 +12,14 @@ Possible ways of achieving this:
  - [Digital Mobius](https://github.com/Qovery/digital-mobius)
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
 
-In this tutorial the main focus will be the [Digital Mobius](https://github.com/Qovery/digital-mobius) project. A simplified diagram of the internal flow (logic) is provided as well. Finally, we will have it deployed to a running `DOKS` cluster and observe how well it handles cluster nodes recycling.
+In this tutorial the main focus will be the [Digital Mobius](https://github.com/Qovery/digital-mobius) project because it was specifically designed for the usecase described in this tutorial (more details below).
 
-Overview and features:
- - Open source (written in [GO](https://golang.org))
- - Can be used as a `Kubernetes Deployment` or as a standalone binary (CLI)
- - [Helm chart](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) source code is available for easy K8S deployment (or on [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius))
+Main reasons to consider `Digital Mobius`:
+ - Open source (written in [Go](https://golang.org)).
+ - Simplicity and ease of configuration.
+ - [Helm chart](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) is available for easy `K8S` deployment (or on [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius))
+
+A simplified diagram of the internal flow (logic) is provided as well. Finally, we will have it deployed to a running `DOKS` cluster and observe how well it handles cluster nodes recycling.
 
 ## DOKS Cluster Setup
 
@@ -63,13 +65,13 @@ Steps **1** to **5** can be skipped if you already have a cluster running in pla
 5. Spin up the cluster and wait for it to be provisioned:
 
     ```bash
-    export CLUSTER_NAME="mobius-testing-cluster"  # change as required
+    export CLUSTER_NAME="mobius-testing-cluster"
     export CLUSTER_REGION="lon1"                  # grab a region that's more close to you from: doctl k8s options regions
-    export CLUSTER_NODE_SIZE="s-2vcpu-4gb"        # change as required
+    export CLUSTER_NODE_SIZE="s-2vcpu-4gb"
     export CLUSTER_NODE_COUNT=2                   # need 2 nodes at least to test the scenarios
-    export CLUSTER_NODE_POOL_NAME="mbt-np"        # change as required
-    export CLUSTER_NODE_POOL_TAG="mbt-cluster"    # change as required
-    export CLUSTER_NODE_POOL_LABEL="type=basic"   # change as required
+    export CLUSTER_NODE_POOL_NAME="mbt-np"
+    export CLUSTER_NODE_POOL_TAG="mbt-cluster"
+    export CLUSTER_NODE_POOL_LABEL="type=basic"
 
     doctl k8s cluster create "$CLUSTER_NAME" \
       --auto-upgrade=false \
@@ -112,13 +114,13 @@ Steps **1** to **5** can be skipped if you already have a cluster running in pla
 
 ### Overview
 
-[Digital Mobius](https://github.com/Qovery/digital-mobius) is an open source project written in the `GO` language which can automatically recycle unhealthy nodes from a `DigitalOcean Kubernetes` cluster (DOKS).
+[Digital Mobius](https://github.com/Qovery/digital-mobius) is an open source project written in the `Go` language which can automatically recycle unhealthy nodes from a `DigitalOcean Kubernetes` cluster (DOKS).
 
 ### How it Works
 
-The logic inside the application is watching for nodes that are in an unhealthy state at a regular interval specified by the user. A node is considered to be unhealthy if the [Node Condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is set to `Ready` and the status to `False` or `Unknown`. `Digital Mobius` provides also a user configurable flag that specifies how much time has to pass before an unhealthy node needs to be recycled. If all the conditions enumerated previously are met then the affected node(s) will be re-created. It does so via a call to the DigitalOcean's Kubernetes [Delete Kubernetes Node](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node) `REST API`.
+The logic inside the application is watching for nodes that are in an unhealthy state at a regular interval specified by the user. As described in the official `Kubernetes` documentation, a node is considered to be unhealthy if the [Node Condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is set to `Ready` and the status to `False` or `Unknown`. `Digital Mobius` looks for the `Unknown` status which is a result of the master node not being able to communicate with the worker node via the `kubelet`. It also provides a user configurable flag that specifies how much time has to pass before an unhealthy node needs to be recycled. If all the conditions enumerated previously are met then the affected node(s) will be re-created. It does so via a call to the DigitalOcean's Kubernetes [Delete Kubernetes Node](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node) `REST API`.
 
-Below is a diagram showing how `Digital Mobius` works:
+Below is a simplified diagram showing how `Digital Mobius` checks the worker node(s) state:
 
 ![Digital Mobius Flow](content/img/digital-mobius-flow.png)
 
@@ -133,7 +135,7 @@ DIGITAL_OCEAN_TOKEN: "<your_digital_ocean_api_token>"       # personal DO API to
 DIGITAL_OCEAN_CLUSTER_ID: "<your_digital_ocean_cluster_id>" # DOKS cluster ID that needs to be monitored
 ```
 
-The most important values that we need to here provide is the DigitalOcean `REST API token`, the `Cluster ID` and the `Node Creation Delay` time interval which can be expressed in seconds or minutes using the appropriate suffix - e.g.: `10s`, `10m`, etc. 
+The most important values that we need to here provide is the DigitalOcean `API token`, the `Cluster ID` and the `Node Creation Delay` time interval which can be expressed in seconds or minutes using the appropriate suffix - e.g.: `10s`, `10m`, etc. 
 
 ### Deployment Steps
 
@@ -158,7 +160,13 @@ We're going to use `Helm` to perform the deployment in a few very easy steps as 
     export DIGITAL_OCEAN_CLUSTER_ID="$(doctl k8s cluster list -o json | jq -r '.[].id')"
     echo "$DIGITAL_OCEAN_CLUSTER_ID"
     ```
-3. Start the actual deployment in a dedicated namespace (in this example `maintenance` is used):
+3. Make sure that the `DigitalOcean` token is set if not already:
+
+    ```bash
+    export DIGITAL_OCEAN_TOKEN="<your_do_personal_access_token>"
+    echo "$DIGITAL_OCEAN_TOKEN"
+    ```
+4. Start the actual deployment in a dedicated namespace (in this example `maintenance` is used):
 
     ```bash
     helm install digital-mobius digital-mobius/digital-mobius --version 0.1.4 \
@@ -167,7 +175,7 @@ We're going to use `Helm` to perform the deployment in a few very easy steps as 
       --set enabledFeatures.disableDryRun=true \
       --namespace maintenance --create-namespace
     ```
-4. Check the application:
+5. Check the application:
 
     List deployments:
 
@@ -275,7 +283,7 @@ The experiment steps:
     ```bash
     brew install watch
     ```
-2. Pick a `doks-debug` Pod and `exec` into it:
+2. Pick the first `doks-debug` Pod and `exec` into it (you can choose any other as well):
 
     ```bash
     DOKS_DEBUG_POD_NAME=$(kubectl get pods -l name=doks-debug -ojsonpath='{.items[0].metadata.name}' -n kube-system)
@@ -313,6 +321,15 @@ The experiment steps:
     systemctl stop kubelet
     ```
 
+**Tip:**
+
+We can kill the `kubelet` using the `kubectl one line` example provided below:
+
+```bash
+DOKS_DEBUG_POD_NAME=$(kubectl get pods -l name=doks-debug -ojsonpath='{.items[0].metadata.name}' -n kube-system)
+kubectl exec -it "$DOKS_DEBUG_POD_NAME" -n kube-system -- chroot /host systemctl stop kubelet
+```
+
 ## Observation and Results
 
 After the `kubelet` stop command is issued you'll be kicked out of the `kubectl exec` session which is a good sign because this means that the `Node Controller` lost its connection with the affected node where the `kubelet` was killed.
@@ -325,7 +342,7 @@ basicnp-8hc5d   Ready      <none>   28h    v1.21.2
 basicnp-8hx1a   NotReady   <none>   144m   v1.21.2
 ```
 
-After a while the node should vanish which is the expected behavior:
+After the `DELAY_NODE_CREATION` time interval expired, the node should vanish which is the expected behavior:
 
 ```
 NAME            STATUS   ROLES    AGE   VERSION

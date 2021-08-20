@@ -2,7 +2,6 @@
 
 ## Problem Description
 
-`DigitalOcean Kubernetes` (DOKS) cluster pool nodes can transition to an unhealthy state (`NotReady` or `Unknown`) by user will or by accident (overloading, deleting `kube-system` stuff, `kubelet` issues).
 
 ## Solution:
 

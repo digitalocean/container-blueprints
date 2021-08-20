@@ -1,11 +1,12 @@
-# Replacing Unhealthy DOKS Cluster Nodes Automatically Using Digital Mobius
+# Replacing Unhealthy DOKS Cluster Nodes Automatically
 
 ## Problem Description
+When a node in a DOKS cluster is unhealthy, it is a manual, cumbersome process to replace the node automatically. Without doing it, cluster will operate at lower capacity, because the unhealthy nodes will not run any pods.
+
+This tutorial provides an automated way to recycle the unhealthy nodes in DOKS. 
 
 
 ## Solution:
-
-
 We can achieve this using one of the following:
  - [Digital Mobius](https://github.com/Qovery/digital-mobius)
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)

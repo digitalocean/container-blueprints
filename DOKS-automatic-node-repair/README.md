@@ -1,4 +1,4 @@
-# DigitalOcean Kubernetes Automatic Node Repair
+# Replacing Unhealthy DOKS Cluster Nodes Automatically Using Digital Mobius
 
 ## Problem Description
 

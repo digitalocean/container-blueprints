@@ -394,7 +394,7 @@ In the end we can see that it's very easy to handle and overcome some special si
 
 ## Contributing
 
-If you have suggestions or other ideas please feel free to open a PR or CC the maintainer. We value your feedback!
+For suggestions or ideas, please open a PR or create an issue. We value your feedback!
 
 ## Credits
 

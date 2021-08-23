@@ -1,20 +1,22 @@
 # Replacing Unhealthy DOKS Cluster Nodes Automatically
 
 ## Problem Description
-When a node in a DOKS cluster is unhealthy, it is a manual, cumbersome process to replace the node automatically. Without doing it, cluster will operate at lower capacity, because the unhealthy nodes will not run any pods.
 
-This tutorial provides an automated way to recycle the unhealthy nodes in DOKS. 
+When a node in a `DOKS` cluster is unhealthy, it is a manual, cumbersome process to replace the node automatically. Without doing it, cluster will operate at lower capacity, because the unhealthy nodes will not run any Pods.
+
+This tutorial provides an automated way to `recycle` the `unhealthy nodes` in `DOKS`. 
 
 
 ## Solution:
+
 We can achieve this using one of the following:
  - [Digital Mobius](https://github.com/Qovery/digital-mobius)
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
 
 For the use case described in this tutorial, we will use [Digital Mobius](https://github.com/Qovery/digital-mobius). We will deploy to a running DOKS cluster and observe how well it handles cluster nodes recycling.
 
-Main reasons to consider Digital Mobius are:
- - Specifically built for DOKS cluster nodes recycling.
+Main reasons to consider `Digital Mobius` are:
+ - Specifically built for `DOKS` cluster nodes recycling.
  - Open source (written in [Go](https://golang.org)).
  - Simplicity and ease of configuration.
  - [Helm chart](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) ready and available for easy Kubernetes deployment (or [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius))
@@ -24,9 +26,6 @@ To learn more, see [Overview](#Overview).
 ## Set Up DOKS Cluster
 
 ### Requirements
-
-**Note:**
-
 
 1. A DigitalOcean [account](https://cloud.digitalocean.com) to create the access keys and provision the DOKS cluster.
 2. An API access token for managing the DOKS cluster. To create the access token, from your DigitalOcean account, go to the [API](https://cloud.digitalocean.com/account/api) section to generate the token:
@@ -52,17 +51,23 @@ To learn more, see [Overview](#Overview).
     brew info doctl
     brew install doctl
     ```
-After installation, initialize `doctl` using the DigitalOCean personal access token using the following command:
-   
-    ```bash
-    doctl auth init --access-token "$DIGITAL_OCEAN_TOKEN"
-    ```
-    The output looks similar to the following (token value is masked):
-    ```
-    Using token [*****************************************]
 
-    Validating token... OK
-    ```
+After installation, initialize `doctl` using the `DigitalOcean` personal access token:
+   
+ ```bash
+ doctl auth init --access-token "$DIGITAL_OCEAN_TOKEN"
+ ```
+
+ The output looks similar to the following (token value is masked):
+ 
+ ```
+ Using token [*****************************************]
+
+ Validating token... OK
+```
+
+### Create a DOKS Cluster
+
 1. Spin up the cluster and wait for it to be provisioned:
 
     ```bash
@@ -81,6 +86,7 @@ After installation, initialize `doctl` using the DigitalOCean personal access to
     ```
 
     The output looks similar to the following:
+
     ```
     Notice: Cluster is provisioning, waiting for cluster to be running
     ......................................................................
@@ -98,11 +104,13 @@ After installation, initialize `doctl` using the DigitalOCean personal access to
     ```
 
     The output looks similar to the following:
+
     ```
     NAME            STATUS   ROLES    AGE     VERSION
     basicnp-8k4ep   Ready    <none>   2m52s   v1.21.2
     basicnp-8k4es   Ready    <none>   2m16s   v1.21.2
     ```
+
     ### Note:
 
       If the `kubectl` context is not set properly, use the following command to set the context:
@@ -119,15 +127,15 @@ After installation, initialize `doctl` using the DigitalOCean personal access to
 
 ### How it Works
 
-Digital Mobius monitors for DOKS cluster nodes that are in an unhealthy state at specified regular intervals. A `node` is considered to be `unhealthy` if the [Node Condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is set to `Ready` and the status to `False` or `Unknown`. The application checks for the `Unknown` status of the node. A node is in `Unknown` status when the master node is not able to communicate with the worker node via the kubelet. You can also specify how much time has to pass before an unhealthy node needs to be recycled. If all the conditions enumerated earlier are met, then the application recreates the affected node(s). It does so using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node).
+`Digital Mobius` monitors for `DOKS` cluster nodes that are in an unhealthy state at specified regular intervals. A `node` is considered to be `unhealthy` if the [Node Condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is set to `Ready` and the status to `False` or `Unknown`. The application checks for the `Unknown` status of the node. A node is in `Unknown` status when the `master` node is not able to communicate with it via the `kubelet`. You can also specify how much `time` has to pass before an unhealthy node needs to be recycled. If all the conditions enumerated earlier are met, then the application recreates the affected node(s). It does so using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node).
 
-Below is a simplified diagram showing how Digital Mobius checks the worker node(s) state:
+Below is a simplified diagram showing how `Digital Mobius` checks the worker node(s) state:
 
 ![Digital Mobius Flow](content/img/digital-mobius-flow.png)
 
 ### Configuration Overview
 
-In order for the application to work, it needs a set of environment variables to be configured and available. You can see these variables in the [Helm Chart  values file](https://github.com/Qovery/digital-mobius/blob/main/charts/Digital-Mobius/values.yaml):
+In order for the application to work, it needs a set of `environment variables` to be configured and available. You can see these variables in the [Helm Chart  values file](https://github.com/Qovery/digital-mobius/blob/main/charts/Digital-Mobius/values.yaml):
 
 ```
 LOG_LEVEL: "info"
@@ -136,7 +144,7 @@ DIGITAL_OCEAN_TOKEN: "<your_digital_ocean_api_token>"       # Personal DO API to
 DIGITAL_OCEAN_CLUSTER_ID: "<your_digital_ocean_cluster_id>" # DOKS cluster ID that needs to be monitored
 ```
 
-You must specify the DigitalOcean API token `DIGITAL_OCEAN_TOKEN`, the Cluster ID `DIGITAL_OCEAN_CLUSTER_ID`, and the node creation delay time interval `DELAY_NODE_CREATION` in seconds or minutes using the appropriate suffix - e.g.: `10s`, `10m`, etc.
+You must specify the DigitalOcean API token `DIGITAL_OCEAN_TOKEN`, the Cluster ID `DIGITAL_OCEAN_CLUSTER_ID`, and the node creation delay time interval `DELAY_NODE_CREATION` in `seconds` or `minutes` using the appropriate suffix - e.g.: `10s`, `10m`, etc.
 
 **Note:**
 
@@ -151,20 +159,21 @@ Use `Helm` to perform the deployment as follows:
     ```bash
     helm repo add digital-mobius https://qovery.github.io/digital-mobius
     ```
-2. Fetch the cluster ID that you want to monitor for node failures:
+2. Fetch the cluster `ID` that you want to monitor for node failures:
 
     ```bash
     doctl k8s cluster list
     export DIGITAL_OCEAN_CLUSTER_ID="<your_cluster_id_here>"
     ```
 
+    **Hint:**
+  
+    If you have only one cluster, then use `jq` (For example, on MacOS it can be installed with: `brew install jq`):
 
     ```bash
     export DIGITAL_OCEAN_CLUSTER_ID="$(doctl k8s cluster list -o json | jq -r '.[].id')"
     echo "$DIGITAL_OCEAN_CLUSTER_ID"
-    **Hint:**
-  
-    If you have only one cluster, then use `jq`. For example, on MacOS `brew install jq`):
+    ```
 3. Make sure that the `DigitalOcean` token is set:
 
     ```bash
@@ -182,7 +191,7 @@ Use `Helm` to perform the deployment as follows:
     ```
     **Note:**
 
-    The `enabledFeatures.disableDryRun` option enables or disables the `DRY RUN` mode of the tool. You can set it to `true` or `false` (`true` means `DRY_RUN` mode is `disabled`). In this example, it is disabled which means that the tool will recycle the cluster nodes and not just pretend. This is helpful if you want to test it first without performing any changes to the real cluster nodes.
+    The `enabledFeatures.disableDryRun` option enables or disables the `DRY RUN` mode of the tool. You can set it to `true` or `false` (`true` means `DRY_RUN` mode is `disabled`). In this example, it is disabled which means that the tool will recycle the cluster nodes and not just pretend. Enabling the dry run mode is helpful if you want to test it first without performing any changes to the real cluster nodes.
 
 
 5. Check the application:
@@ -192,6 +201,7 @@ Use `Helm` to perform the deployment as follows:
     ```bash
     helm ls -n maintenance
     ```
+
     The output looks similar to the following:
     ```
     NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
@@ -203,6 +213,7 @@ Use `Helm` to perform the deployment as follows:
     ```bash
     kubectl get pods -n maintenance
     ```
+
     The output looks similar to the following:
     ```
     NAME                             READY   STATUS    RESTARTS   AGE
@@ -214,6 +225,7 @@ Use `Helm` to perform the deployment as follows:
     ```bash
     kubectl logs -l app.kubernetes.io/name=digital-mobius -n maintenance
     ```
+
     The output looks similar to the following:
     ```
         _ _       _ _        _                      _     _           
@@ -229,7 +241,7 @@ Use `Helm` to perform the deployment as follows:
 
 ## Testing the Digital Mobius Setup
 
-To test the Digital Mobius setup, we disconnect one or more of the cluster nodes. In order to achieve this, you kill the `kubelet` service from the corresponding worker node(s) using [doks-debug](https://github.com/digitalocean/doks-debug). Essentially what it does is to create some `debug` pods which run containers in `privileged` mode. Then, use `kubectl exec` to execute commands in one of the running containers and get access to the worker node system services. You can find more details on the [doks-debug](https://github.com/digitalocean/doks-debug) project page.
+To test the `Digital Mobius` setup, we `disconnect` one or more of the cluster nodes. In order to achieve this, you kill the `kubelet` service from the corresponding worker node(s) using [doks-debug](https://github.com/digitalocean/doks-debug). Essentially what it does is to create some `debug` Pods which run containers in `privileged` mode. Then, use `kubectl exec` to execute commands in one of the running containers and get access to the worker node `system services`. You can find more details on the [doks-debug](https://github.com/digitalocean/doks-debug) project page.
 
 
 ### Deploying a Debug Pod
@@ -257,7 +269,7 @@ To test the Digital Mobius setup, we disconnect one or more of the cluster nodes
    kube-proxy      2         2         2       2            2           <none>                        44h
    ```
 
-3. Verify the `doks-debug` pods:
+3. Verify the `doks-debug` Pods:
 
    ```bash
    kubectl get pods -l name=doks-debug -n kube-system
@@ -271,11 +283,11 @@ To test the Digital Mobius setup, we disconnect one or more of the cluster nodes
    doks-debug-qgw2m   1/1     Running   0          115m
    ```
 
-If everything looks good, kill the kubelet.
+If everything looks good, `kill` the `kubelet`.
 
 ### Killing the Kubelet
 
-To kill the kubelet, use `kubectl exec` in one of the `doks-debug` pods and get access to worker node `system services`. Then, stop the kubelet service. This results in the node going from the `kubectl get nodes` command output.
+To kill the kubelet, use `kubectl exec` in one of the `doks-debug` Pods and get access to worker node `system services`. Then, stop the `kubelet service`. This results in the node going from the `kubectl get nodes` command output.
 
 Perform the following steps:
 
@@ -292,12 +304,13 @@ Perform the following steps:
     ```bash
     brew install watch
     ```
-2. Pick the first `doks-debug` pod and `exec` into it (you can choose any other as well):
+2. Pick the first `doks-debug` Pod and `exec` into it (you can choose any other as well):
 
     ```bash
     DOKS_DEBUG_POD_NAME=$(kubectl get pods -l name=doks-debug -ojsonpath='{.items[0].metadata.name}' -n kube-system)
     kubectl exec -it "$DOKS_DEBUG_POD_NAME" -n kube-system -- bash
     ```
+
     If everything is ok, a prompt that looks similar to the following appears:
 
     ```
@@ -341,7 +354,7 @@ kubectl exec -it "$DOKS_DEBUG_POD_NAME" -n kube-system -- chroot /host systemctl
 
 ## Observation and Results
 
-After you stop the kubelet, you'll be kicked out of the `kubectl exec` session.  This means that the `Node Controller` lost its connection with the affected node where the kubelet was killed.
+After you stop the kubelet, you'll be kicked out of the `kubectl exec` session. This means that the `Node Controller` lost its connection with the affected node where the kubelet was killed.
  
 You can see the results in the other terminal window where you set the watch (notice the `NotReady` state of the affected node):
 
@@ -358,7 +371,7 @@ NAME            STATUS   ROLES    AGE   VERSION
 basicnp-8hc5d   Ready    <none>   28h   v1.21.2
 ```
 
-Next, check Digital Mobius` monitoring. Open a terminal window and inspect the logs first:
+Next, check `Digital Mobius` monitoring. Open a terminal window and inspect the logs first:
 
 ```bash
 kubectl logs -l app.kubernetes.io/name=digital-mobius -n maintenance
@@ -377,6 +390,7 @@ time="2021-08-06T08:29:52Z" level=info msg="Starting Digital Mobius 0.1.4 \n"
 time="2021-08-06T11:13:09Z" level=info msg="Recyling node {11bdd0f1-8bd0-42dc-a3af-7a83bc319295 f8d76723-2b0e-474d-9465-d9da7817a639 379826e4-8d1b-4ba4-97dd-739bbfa69023}"
 ...
 ```
+
 In the terminal window where you set the watch for `kubectl get nodes`, a new node appears after a minute or so, and replaces the old one. The new node has a different `ID` and a new `AGE` value:
 
 ```
@@ -389,7 +403,7 @@ As you can see, the node was recycled.
 
 ## Final Notes
 
-In this tutorial, we automatically recover cluster nodes in case the kubelet dies or becomes unresponsive. This can happen when the worker node is overloaded  or due to some unexpected networking issues. High load can be caused by not following good practices when it comes to `Pod resources limits`, like not setting them at all or using inadequate values.
+In this tutorial, we `automatically recover cluster nodes` in case the `kubelet dies` or becomes `unresponsive`. This can happen when the `worker node` is `overloaded`  or due to some unexpected `networking issues`. High load can be caused by not following good practices when it comes to `Pod resources limits`, like not setting them at all or using `inadequate values`.
 
 ## Contributing
 

@@ -1,25 +1,41 @@
-terraform {
-  required_version = ">=1.0.2"
-}
-
-# SSH
-locals {
-  known_hosts = "github.com ${var.github_ssh_pub_key}"
-}
-
+# ======================= GITHUB =========================
+# 
+# SSH Deploy Key to use by Flux CD
 resource "tls_private_key" "main" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
-# DOKS
-data "digitalocean_kubernetes_cluster" "primary" {
-  name = var.doks_cluster_name
-  depends_on = [
-    digitalocean_kubernetes_cluster.primary
-  ]
+resource "github_repository_deploy_key" "main" {
+  title      = var.doks_cluster_name
+  repository = data.github_repository.main.name
+  key        = tls_private_key.main.public_key_openssh
+  read_only  = true
 }
 
+resource "github_repository_file" "install" {
+  repository = data.github_repository.main.name
+  file       = data.flux_install.main.path
+  content    = data.flux_install.main.content
+  branch     = var.git_repository_branch
+}
+
+resource "github_repository_file" "sync" {
+  repository = data.github_repository.main.name
+  file       = data.flux_sync.main.path
+  content    = data.flux_sync.main.content
+  branch     = var.git_repository_branch
+}
+
+resource "github_repository_file" "kustomize" {
+  repository = data.github_repository.main.name
+  file       = data.flux_sync.main.kustomize_path
+  content    = data.flux_sync.main.kustomize_content
+  branch     = var.git_repository_branch
+}
+# =========================================================
+
+# ======================== DOKS ===========================
 resource "digitalocean_kubernetes_cluster" "primary" {
   name    = var.doks_cluster_name
   region  = var.doks_cluster_region
@@ -32,18 +48,7 @@ resource "digitalocean_kubernetes_cluster" "primary" {
   }
 }
 
-# Flux
-data "flux_install" "main" {
-  target_path = var.github_repository_target_path
-}
-
-data "flux_sync" "main" {
-  target_path = var.github_repository_target_path
-  url         = "ssh://git@github.com/${var.github_owner}/${var.github_repository_name}.git"
-  branch      = var.github_repository_branch
-}
-
-# Kubernetes
+# =========================== FLUX CD ===========================
 resource "kubernetes_namespace" "flux_system" {
   metadata {
     name = "flux-system"
@@ -52,30 +57,9 @@ resource "kubernetes_namespace" "flux_system" {
   lifecycle {
     ignore_changes = [
       metadata[0].labels,
-      metadata[0].annotations, # TODO: need to check if this one can be safely ignored
+      # metadata[0].annotations, # TODO: need to check if this one can be safely ignored
     ]
   }
-}
-
-data "kubectl_file_documents" "install" {
-  content = data.flux_install.main.content
-}
-
-data "kubectl_file_documents" "sync" {
-  content = data.flux_sync.main.content
-}
-
-locals {
-  install = [for v in data.kubectl_file_documents.install.documents : {
-    data : yamldecode(v)
-    content : v
-    }
-  ]
-  sync = [for v in data.kubectl_file_documents.sync.documents : {
-    data : yamldecode(v)
-    content : v
-    }
-  ]
 }
 
 resource "kubectl_manifest" "install" {
@@ -101,46 +85,7 @@ resource "kubernetes_secret" "main" {
   data = {
     identity       = tls_private_key.main.private_key_pem
     "identity.pub" = tls_private_key.main.public_key_pem
-    known_hosts    = local.known_hosts
+    known_hosts    = "github.com ${var.github_ssh_pub_key}"
   }
 }
-
-# GitHub
-resource "github_repository" "main" {
-  name       = var.github_repository_name
-  visibility = var.github_repository_visibility
-  auto_init  = true
-}
-
-resource "github_branch_default" "main" {
-  repository = github_repository.main.name
-  branch     = var.github_repository_branch
-}
-
-resource "github_repository_deploy_key" "main" {
-  title      = var.doks_cluster_name
-  repository = github_repository.main.name
-  key        = tls_private_key.main.public_key_openssh
-  read_only  = true
-}
-
-resource "github_repository_file" "install" {
-  repository = github_repository.main.name
-  file       = data.flux_install.main.path
-  content    = data.flux_install.main.content
-  branch     = var.github_repository_branch
-}
-
-resource "github_repository_file" "sync" {
-  repository = github_repository.main.name
-  file       = data.flux_sync.main.path
-  content    = data.flux_sync.main.content
-  branch     = var.github_repository_branch
-}
-
-resource "github_repository_file" "kustomize" {
-  repository = github_repository.main.name
-  file       = data.flux_sync.main.kustomize_path
-  content    = data.flux_sync.main.kustomize_content
-  branch     = var.github_repository_branch
-}
+# ==================================================================

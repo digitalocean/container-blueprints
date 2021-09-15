@@ -1,0 +1,14 @@
+# DOKS 
+do_api_token                 = "<DO_API_TOKEN>"                 # DO API TOKEN
+doks_cluster_name            = "<DOKS_CLUSTER_NAME>"            # Name of this DOKS cluster ?
+doks_cluster_region          = "<DOKS_CLUSTER_REGION>"          # What region should this DOKS cluster be provisioned in?
+doks_cluster_version         = "<DOKS_CLUSTER_VERSION>"         # What Kubernetes version should this DOKS cluster use ?
+doks_cluster_pool_size       = "<DOKS_CLUSTER_POOL_SIZE>"       # What machine type to use in the DOKS cluster ?
+doks_cluster_pool_node_count = <DOKS_CLUSTER_POOL_NODE_COUNT>   # How many worker nodes DOKS cluster should have ?
+
+# Github
+github_user               = "<GITHUB_USER>"               # Your Github username
+github_token              = "<GITHUB_TOKEN>"              # Your GitHub personal access token
+git_repository_name       = "<GIT_REPOSITORY_NAME>"       # Git repository name where Terraform should store manifests
+git_repository_branch     = "<GIT_REPOSITORYT_BRANCH>"    # Branch name to use in this Git repository
+git_repository_sync_path  = "<GIT_REPOSITORY_SYNC_PATH>"  # Git repository path where the sync manifests are committed

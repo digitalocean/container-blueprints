@@ -6,12 +6,14 @@ This blueprint will guide you on how to use [Flux](https://fluxcd.io) to manage 
 
 `Flux` is used for managing the `Continuous Delivery` of applications inside the `DigitalOcean Kubernetes` cluster and enable `GitOps`.
 
+
 ## Table of Contents
 - [Bootstrapping DOKS and Flux CD](#bootstrapping-doks-and-flux-cd)
 - [Inspecting Cluster State](#inspecting-cluster-state)    
 - [Flux CD Example Configuration](#flux-cd-example-configuration)
 - [Uninstalling Resources](#uninstalling-resources)
 - [Final Notes](#final-notes)
+- [Learn More](#learn-more)
 
 
 ## Bootstrapping DOKS and Flux CD
@@ -51,7 +53,7 @@ This is how the final setup looks like:
 
 In this part `Terraform` will be used to provision the `DOKS` cluster, as well as to deploy `Flux CD`. It will use the `Git` repository and branch defined in the `.tfvars` file to sync the `Kubernetes` cluster manifests.
 
-First, you're going to initialize the `Terraform` backend. A [DO Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the `Terraform` state file is highly recommended because we do not have to worry about exposing sensitive data as long as the space is private of course. Another advantage is that the state of our infrastructure is backed up, so we can re-use it in order to do a refresh and change the affected parts only. Having a common shared space for team members is desired as well in order to perform collaborative work via `Terraform`.
+First, you're going to initialize the `Terraform` backend. A [DO Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the `Terraform` state file is highly recommended because you do not have to worry about exposing sensitive data as long as the space is private of course. Another advantage is that the state of your infrastructure is backed up, so you can re-use it in order to do a refresh and change the affected parts only. Having a common shared space for team members is desired as well in order to perform collaborative work via `Terraform`.
 
 Next, a `Terraform` plan will be created for infrastructure inspection and then applied in order to create all the required resources. After it finishes, you should have a fully functional `DOKS` cluster with `Flux CD` deployed and running.
 
@@ -66,7 +68,7 @@ Steps to follow:
 
     cd container-blueprints/create-doks-with-terraform-flux
     ```
-2. Edit the [backend.tf](backend.tf) file and replace the `<>` placeholders accordingly, in order to provide the appropriate values (explanations for each can be found inside).
+2. Rename the [backend.tf.sample](backend.tf.sample) file provided in this repository to `backend.tf`. Then, edit `backend.tf` and replace the `<>` placeholders accordingly (explanations for each can be found inside).
 3. Initialize the `Terraform` backend. You're going to use the previously created `DO Spaces` access and secret keys:
    
     ```shell
@@ -134,7 +136,7 @@ The `Flux CD` system `manifests` should be present in your `Git` repository as w
 
 ## Inspecting Cluster State
 
-In order to inspect the `Kubernetes` cluster as well as the `Flux CD` state and get information about various components, we need to install a few tools like:
+In order to inspect the `Kubernetes` cluster as well as the `Flux CD` state and get information about various components, you need to install a few tools like:
 
 1. `doctl` for `DigitalOcean` interaction (most of the tasks that can be done via the `DigitalOcean` web panel can be accomplished using the `CLI` variant as well).
 2. `kubectl` for `Kubernetes` interaction.
@@ -144,14 +146,14 @@ Having the above at hand will also help you create and manage the required `Flux
 
 ### Doctl
 
-Can be installed for your specific `OS` and architecture from [here](https://github.com/digitalocean/doctl/releases). On `MacOS` we can use `Homebrew` to install it very easily like this:
+Can be installed for your specific `OS` and architecture from [here](https://github.com/digitalocean/doctl/releases). On `MacOS` you can use `Homebrew` to install it very easily like this:
 
 ```shell
 brew info doctl
 brew install doctl
 ```
 
-After installation, we have to initialize it using the `DigitalOcean` personal token created at the beginning of this blueprint. Paste the token when prompted:
+After installation, you have to initialize it using the `DigitalOcean` personal token created at the beginning of this blueprint. Paste the token when prompted:
 
 ```shell
 doctl auth init
@@ -165,20 +167,28 @@ doctl auth list
 
 ### Kubectl
 
-Please follow the specific steps for your `OS` and architecture from the official [site](https://kubernetes.io/docs/tasks/tools). On `MacOS` we can use `Homebrew` to install it very easily like this:
+Please follow the specific steps for your `OS` and architecture from the official [site](https://kubernetes.io/docs/tasks/tools). On `MacOS` you can use `Homebrew` to install it very easily like this:
 
 ```shell
 brew info kubectl
 brew install kubectl
 ```
 
-Next, you have to set the `kubectl` context to point to your cluster created in this blueprint like this (make sure to replace the `<>` placeholders accordingly):
+Next, you have to set the `kubectl` context to point to your cluster created in this blueprint (make sure to replace the `<>` placeholders accordingly). 
+
+List the available `Kubernetes` clusters first:
+
+```shell
+doctl k8s cluster list
+```
+
+Point `kubectl` to your cluster:
 
 ```shell
 doctl k8s cluster kubeconfig save <your_doks_cluster_name>
 ```
 
-Next, please check that the context was set and that it's pointing to your `Kubernetes` cluster by running:
+Please check that the context was set and that it's pointing to your `Kubernetes` cluster by running:
 
 ```shell
 kubectl config get-contexts
@@ -330,12 +340,12 @@ Please follow the steps below:
 
 ## Inspecting the results
 
-After one minute or so (if using the default settings), the `busybox` namespace and associated pod should be created and running. If you don't want to wait we can always force reconciliation via:
+After one minute or so (if using the default settings), the `busybox` namespace and associated pod should be created and running. If you don't want to wait you can always force reconciliation via:
 
 ```shell
 flux reconcile source git flux-system
 
-flux reconcile kustomization busybox-kustomization
+flux reconcile kustomization busybox
 ```
 
 The output looks similar to:
@@ -349,9 +359,9 @@ $ flux reconcile source git flux-system
 ✔ GitRepository reconciliation completed
 ✔ fetched revision main/b908f9b47b3a568ae346a74c277b23a7b7ef9602
 
-$ flux reconcile kustomization busybox-kustomization
+$ flux reconcile kustomization busybox
 
-► annotating Kustomization busybox-kustomization in flux-system namespace
+► annotating Kustomization busybox in flux-system namespace
 ✔ Kustomization annotated
 ◎ waiting for Kustomization reconciliation
 ✔ Kustomization reconciliation completed
@@ -390,7 +400,7 @@ kube-public       Active   26h
 kube-system       Active   26h
 ```
 
-Where is our `busybox` Pod? Let's find out:
+Where is your `busybox` Pod? Let's find out:
 
 ```shell
 kubectl get pods -n busybox
@@ -415,9 +425,7 @@ terraform destroy
 
 **Note:**
 
-The `terraform destroy` operation has an issue and it will hang when it will try to clean up the Flux CD namespace - seems to be a bug somewhere at this time of writing. 
-
-Another approach and a safer one is to clean the resources in a selective manner as detailed next.
+The `terraform destroy` operation has a limitation and it will hang when it will try to clean up the `Flux CD` namespace. The main problem is that the `Kubernetes` provider cannot delete namespaces that have `finalizers` set, which happens to be in the case of `flux-system`. At this time of writing, there's an open issue for the Terraform [kubernetes-provider](https://github.com/hashicorp/terraform-provider-kubernetes/issues/1040) if you want to know more about it. Another approach and a safer one is to clean the resources in a selective manner, as detailed next.
 
 ### Flux CD uninstall
 
@@ -434,6 +442,10 @@ The above will clean up all the resources created by [Flux CD](https://fluxcd.io
 ```shell
 terraform destroy --target=digitalocean_kubernetes_cluster.primary
 ```
+
+**Note:**
+
+The above will destroy the whole `DOKS` cluster, meaning `Flux CD` and all the applications you deployed, so please be careful when choosing this option.
 
 
 # Final Notes
@@ -463,4 +475,4 @@ Each `cluster` can have its `configuration` synced from a specific `branch` from
  - [Helm Controller](https://fluxcd.io/docs/components/helm) for managing [Helm](https://helm.sh) chart releases
  - [Image Automation Controller](https://fluxcd.io/docs/components/image) which can update a `Git` repository when new container images are available
 
-You can visit the official [guides](https://fluxcd.io/docs/guides) for more interesting stuff and ideas, on how to structure your `Git` repository as well as application `manifests` for multi-cluster and multi-environment setups.
+You can visit the official [guides](https://fluxcd.io/docs/guides) for more interesting stuff and ideas, like how to structure your `Git` repository, as well as application `manifests` for multi-cluster and multi-environment setups.

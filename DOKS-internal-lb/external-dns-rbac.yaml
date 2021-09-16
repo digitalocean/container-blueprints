@@ -58,6 +58,6 @@ spec:
         - --provider=digitalocean
         env:
         - name: DO_TOKEN
-          value: "f7d17cf9e7ba51ec1033789aa3519976cd5aa99ccc809123764a4d86aa574a56"
+          value: "DIGITALOCEAN_API_TOKEN"
 ---
 

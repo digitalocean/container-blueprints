@@ -33,7 +33,7 @@ metadata:
     external-dns.alpha.kubernetes.io/ttl: "30"
     external-dns.alpha.kubernetes.io/access: "private"
 spec:
-# externalTrafficPolicy: ClusterLocal
+  externalTrafficPolicy: Cluster
   ports:
   - name: http
     port: 80

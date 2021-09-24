@@ -1,14 +1,14 @@
-# How to Create a Gitops Stack Using DigitalOcean Kubernetes and Flux CD
+# Create a GitOps Stack Using DigitalOcean Kubernetes and Flux CD
 
 ## Introduction
 
-This blueprint will guide you on how to use [Flux](https://fluxcd.io) to manage application deployments on a `DigitalOcean Kubernetes` (DOKS) cluster in a `GitOps` fashion. In the end, you will also tell [Flux CD](https://fluxcd.io) to perform a basic deployment of the now ubiquitous `busybox` Docker application.
+This tutorial will guide you on how to use [Flux](https://fluxcd.io) to manage application deployments on a DigitalOcean Kubernetes(DOKS) cluster in a GitOps fashion. In the end, you will also tell [Flux CD](https://fluxcd.io) to perform a basic deployment of the busybox Docker application.
 
-[Terraform](https://www.terraform.io) is one of the most popular tools to write `infrastructure as code` using declarative configuration files, which allows for concise descriptions of resources using blocks, arguments, and expressions. It will be responsible with spinning up the `DOKS` (DigitalOcean Kubernetes) cluster as well as `Flux`.
+[Terraform](https://www.terraform.io) is one of the most popular tools to write infrastructure as code using declarative configuration files, which allows for concise descriptions of resources using blocks, arguments, and expressions. It will be responsible with spinning up the DOKS cluster as well as Flux.
 
-`Flux` is used for managing the `Continuous Delivery` of applications inside the `DigitalOcean Kubernetes` cluster and enable `GitOps`. It has a bunch of [Controllers](https://fluxcd.io/docs/components) built-in that help you create the required `GitOps` resources.
+Flux is used for managing the continuous delivery of applications inside the DOKS cluster and enable GitOps. It has a bunch of [Controllers](https://fluxcd.io/docs/components) built-in that help you create the required GitOps resources.
 
-Tutorial setup overview:
+The following diagram illustrates the DOKS cluster, Terraform and Flux setup:
 
 ![TF_DOKS_FLUX_CD](assets/img/tf_doks_fluxcd_flow.png)
 
@@ -28,7 +28,7 @@ Tutorial setup overview:
 
 To complete this tutorial, you will need:
 
-1. A [GitHub](https://github.com) repository and `branch`, needed for `Flux CD` to store cluster and sample application `manifests`.
+1. A [GitHub](https://github.com) repository for Flux CD to store cluster and sample application manifests.
 2. A GitHub [personal access token](https://github.com/settings/tokens) that has the `repo` permissions set. The `Terraform` module provided in this blueprint needs it in order to create the `SSH` deploy key, as well as to commit the `Flux CD` cluster manifests in your `Git` repository.
 3. A `DigitalOcean` access token for creating/managing the `DOKS` cluster. Please follow the official `DigitalOcean` tutorial on how to [create a personal access token](https://docs.digitalocean.com/reference/api/create-personal-access-token). Copy the `token` value and save it somewhere safe.
 4. Access keys for [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) (S3-compatible object storage). Please follow the official `DigitalOcean` tutorial on how to [manage access keys](https://docs.digitalocean.com/products/spaces/how-to/manage-access/). We use `Spaces` for storing the `Terraform` state file. Copy the `key` and `secret` value and save each in a local `environment` variable for later use (make sure to replace the `<>` placeholders accordingly):

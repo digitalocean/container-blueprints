@@ -71,12 +71,30 @@ git clone https://github.com/digitalocean/container-blueprints.git
 cd container-blueprints/create-doks-with-terraform-flux
 ```
 
+The repository includes the following configuration files:
+
+- `backend.tf.sample`: 
+
+- `data.tf`:
+
+- `main.tf`:
+
+- `provider.tf`:
+
+- `terraform.tfvars.sample`:
+
+- `variables.tf`:
+
+- `version.tf`:
+
 ## Step 2 - Bootstrapping DOKS and Flux
 
 The bootstrap process creates a DOKS cluster and provisions Flux using Terraform. First, you're going to initialize the Terraform backend. 
-Next, a Terraform plan will be created for infrastructure inspection and then applied in order to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
+Next, you will create a Terraform plan for infrastructure inspection and then apply it in order to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
 
-1. Rename the provided `backend.tf.sample` file from the sample repository to `backend.tf`. Edit the file and replace the `<>` placeholders with your bucket and state file name.
+1. Rename the provided `backend.tf.sample` file from the sample repository to `backend.tf`. Edit the file and replace the placeholders with your bucket and name of the Terraform state file you want to create.
+
+We highly recommend using a [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the Terraform state file. As long as the space is private, your sensitive data is secure. The data is also backed up and you can perform collaborative work using your Space.
 
 ```text
 # Store the state file using a DO Spaces bucket
@@ -94,8 +112,6 @@ terraform {
 ```
 
 2. Initialize the Terraform backend. 
-
-We highly recommend using a [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the Terraform state file. As long as the space is private, your sensitive data is secure. The data is also backed up and you can perform collaborative work using your Space.
 
 Use the previously created DO Spaces access and secret keys to initialize the Terraform backend:
 
@@ -117,18 +133,12 @@ Use the previously created DO Spaces access and secret keys to initialize the Te
     ...
     ```
 
-3. Rename the [terraform.tfvars.sample](terraform.tfvars.sample):
-
-```shell
-cp terraform.tfvars.sample terraform.tfvars
-```
-
-4. Edit the `terraform.tfvars` file and replace the `<>` placeholders with your DOKS and GitHub information.
+3. Rename the `terraform.tfvars.sample` file to `terraform.tfvars`. Edit the `terraform.tfvars` file and replace the placeholders with your DOKS and GitHub information.
 
 ```text
 # DOKS 
 do_api_token                 = "<YOUR_DO_API_TOKEN_HERE>"                 # DO API TOKEN
-doks_cluster_name            = "<YOUR_DOKS_CLUSTER_NAME_HERE>"            # Name of this `DOKS` cluster ?
+doks_cluster_name            = "<YOUR_DOKS_CLUSTER_NAME_HERE>"            # Name of this `DOKS` cluster 
 doks_cluster_region          = "<YOUR_DOKS_CLUSTER_REGION_HERE>"          # What region should this `DOKS` cluster be provisioned in?
 doks_cluster_version         = "<YOUR_DOKS_CLUSTER_VERSION_HERE>"         # What Kubernetes version should this `DOKS` cluster use ?
 doks_cluster_pool_size       = "<YOUR_DOKS_CLUSTER_POOL_SIZE_HERE>"       # What machine type to use for this `DOKS` cluster ?
@@ -169,15 +179,15 @@ The output looks similar to the following:
     ...
     ```  
     
-If everything goes well, the DOKS cluster should be up and running, as well as Flux:
+If everything goes well, the DOKS cluster and Flux will be up and running.
 
 ![DOKS state](assets/img/doks_created.png)
 
-Check that the Terraform state file is saved in your [DO Spaces](https://cloud.digitalocean.com/spaces) bucket. Bucket listing looks similar to:
+Check that the Terraform state file is saved in your Spaces bucket.
 
 ![DO Spaces Terraform state file](assets/img/tf_state_s3.png)
 
-The Flux CD manifests for your DOKS cluster should be present in your Git repository as well:
+The Flux CD manifests for your DOKS cluster will also be present in your Git repository.
 
 ![GIT repo state](assets/img/flux_git_res.png)
 
@@ -185,7 +195,7 @@ A Git repository and branch is required beforehand to store Flux CD system manif
 
 This repository is a Terraform module basically, so please go ahead and inspect the options available inside the [variables.tf](variables.tf) file.
 
-## Step 3 - Inspecting Cluster State
+## Step 3 - Inspecting Cluster State and Flux Deployment
 
 List the available Kubernetes clusters:
 
@@ -193,8 +203,18 @@ List the available Kubernetes clusters:
 doctl kubernetes cluster list
 ```
 
-[Authenticate](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#doctl) your cluster and [check the context](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#contexts).
+[Authenticate](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#doctl) your cluster:
 
+```shell
+doctl k8s cluster kubeconfig save <your_doks_cluster_name>
+```
+
+[Check that the current context](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#contexts) points to your cluster:
+
+```shell
+kubectl config get-contexts
+```
+ 
 List the cluster nodes and check the `STATUS` column to make sure that they're in a healthy state:
 
 ```shell
@@ -233,7 +253,7 @@ The output looks similar to the following:
 ✔ all checks passed
 ```
 
-Inspect all Flux resources:
+Inspect all the Flux resources:
 
 ```shell
 flux get all
@@ -249,7 +269,7 @@ NAME                      READY MESSAGE                        REVISION      SUS
 kustomization/flux-system True  Applied revision: main/1d69... main/1d69c... False  
 ```
 
-In case you need to perform some troubleshooting or see what Flux CD is doing, you can access the logs via:
+In case you need to perform some troubleshooting or see what Flux CD is doing, you can access the logs by running the following command:
 
 ```shell
 flux logs
@@ -273,9 +293,9 @@ The available controllers that come with Flux are as follows:
 - [Source Controller](https://fluxcd.io/docs/components/source/) - responsible for handling the [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) CRD.
 - [Kustomize Controller](https://fluxcd.io/docs/components/kustomize) - responsible for handling the [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) CRD.
 
-By default, Flux uses a [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. Git Repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
+By default, Flux uses a [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. The Git repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
 
-Terraform provisions the above resources for your DOKS cluster, as seen below:
+Terraform provisions the above resources for your DOKS cluster, as shown below:
 
 ```shell
 flux get all
@@ -318,11 +338,11 @@ Inspect the Git Repository resource:
       url: ssh://git@github.com/test-github-user/test-git-repo.git
     ```
 
-    The most relevant section to look for is the spec, which defines:
+The most relevant section to look for is the spec, which defines:
 
-    - `Git` repository `url` to sync manifests from - `ssh://git@github.com/test-github-user/test-git-repo.git`, in this example.
-    - The Git `branch` to use - set to `main` in this example.
-    - The `interval` to use for syncing - set to `1 minute` by default. 
+- `Git` repository `url` to sync manifests from - `ssh://git@github.com/test-github-user/test-git-repo.git`, in this example.
+- The Git `branch` to use - set to `main` in this example.
+- The `interval` to use for syncing - set to `1 minute` by default. 
 
 Next, inspect the `Kustomization` resource:
 
@@ -330,7 +350,7 @@ Next, inspect the `Kustomization` resource:
     flux export kustomization flux-system
     ```
 
-    The output looks similar to :
+The output looks similar to:
 
     ```text
     ---
@@ -349,11 +369,11 @@ Next, inspect the `Kustomization` resource:
       ...
     ```
 
-    The most relevant section to look for is the `spec`, which defines:
+The most relevant section to look for is the `spec`, which defines:
 
-    - The `interval` used for syncing - set to `10 minutes` by default.
-    - The `path` from the `Git` repository where this `Kustomization` manifests are kept.
-    - `sourceRef` - an important parameter that reveals relationships between resources ! It shows you that it is using another resource to fetch the manifests - a `GitRepository` in this case. The `name` field uniquely identifies the referenced resource - `flux-system`.
+- The `interval` used for syncing - set to `10 minutes` by default.
+- The `path` from the `Git` repository where this `Kustomization` manifests are kept.
+- `sourceRef` - an important parameter that reveals relationships between resources ! It shows you that it is using another resource to fetch the manifests - a `GitRepository` in this case. The `name` field uniquely identifies the referenced resource - `flux-system`.
 
 To help you start very quickly, as well as to demonstrate the basic functionality of `Flux`, the steps explained next focus on a `single` cluster, synced from one `Git` repository and `branch`. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (like a separate `branch` per `environment`, for example). More information and examples can be found on the official Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure) documentation page.
 

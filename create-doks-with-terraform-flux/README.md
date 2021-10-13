@@ -10,23 +10,11 @@ The following diagram illustrates the DOKS cluster, Terraform and Flux setup:
 
 ![TF_DOKS_FLUX_CD](assets/img/tf_doks_fluxcd_flow.png)
 
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Step 1 - Bootstrapping DOKS and Flux CD](#step-1---bootstrapping-doks-and-flux-cd)
-- [Step 2 - Inspecting Cluster State](#step-2---inspecting-cluster-state)
-- [Step 3 - Flux CD Configuration Overview](#step-3---flux-cd-configuration-overview)
-- [Step 4 - Creating BusyBox Example Application via Flux CD](#step-4---creating-busybox-example-application-via-flux-cd)
-- [Step 5 [OPTIONAL] - Uninstalling Resources](#step-5-optional---uninstalling-resources)
-- [Final Notes](#final-notes)
-- [Learn More](#learn-more)
-
-### Prerequisites
+## Prerequisites
 
 To complete this tutorial, you will need:
 
-- A [GitHub](https://github.com) repository for Flux CD to store cluster and your Kubernetes custom application deployment manifests.
+- A [GitHub](https://github.com) repository and branch for Flux CD to store cluster and your Kubernetes custom application deployment manifests.
 
 - A GitHub [personal access token](https://github.com/settings/tokens) that has the repo permissions set. The Terraform module provided in this blueprint needs it in order to create the SSH deploy key, as well as to commit the Flux CD cluster manifests in your Git repository.
 
@@ -63,7 +51,7 @@ brew install git
 
 ## STEP 1: Cloning the Sample GitHub Repository
 
-Clone this repository on your local machine and navigate to the appropriate directory:
+Clone the repository on your local machine and navigate to the appropriate directory:
 
 ```shell
 git clone https://github.com/digitalocean/container-blueprints.git
@@ -71,26 +59,13 @@ git clone https://github.com/digitalocean/container-blueprints.git
 cd container-blueprints/create-doks-with-terraform-flux
 ```
 
-The repository includes the following configuration files:
-
-- `backend.tf.sample`: 
-
-- `data.tf`:
-
-- `main.tf`:
-
-- `provider.tf`:
-
-- `terraform.tfvars.sample`:
-
-- `variables.tf`:
-
-- `version.tf`:
+This repository is a Terraform module. You can inspect the options available inside the [variables.tf](variables.tf) file.
 
 ## Step 2 - Bootstrapping DOKS and Flux
 
-The bootstrap process creates a DOKS cluster and provisions Flux using Terraform. First, you're going to initialize the Terraform backend. 
-Next, you will create a Terraform plan for infrastructure inspection and then apply it in order to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
+The bootstrap process creates a DOKS cluster and provisions Flux using Terraform. 
+
+First, you are going to initialize the Terraform backend. Next, you will create a Terraform plan for infrastructure inspection and then apply it in order to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
 
 1. Rename the provided `backend.tf.sample` file from the sample repository to `backend.tf`. Edit the file and replace the placeholders with your bucket and name of the Terraform state file you want to create.
 
@@ -115,25 +90,25 @@ terraform {
 
 Use the previously created DO Spaces access and secret keys to initialize the Terraform backend:
 
-    ```shell
-    terraform init  --backend-config="access_key=$DO_SPACES_ACCESS_KEY" --backend-config="secret_key=$DO_SPACES_SECRET_KEY"
-    ```
+```shell
+terraform init  --backend-config="access_key=$DO_SPACES_ACCESS_KEY" --backend-config="secret_key=$DO_SPACES_SECRET_KEY"
+```
 
-    The output looks similar to the following:
+The output looks similar to the following:
 
-    ```text
-    Initializing the backend...
+```text
+Initializing the backend...
 
-    Successfully configured the backend "s3"! Terraform will automatically
-    use this backend unless the backend configuration changes.
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
 
-    Initializing provider plugins...
-    - Finding hashicorp/kubernetes versions matching "2.3.2"...
-    - Finding gavinbunney/kubectl versions matching "1.11.2"...
-    ...
-    ```
+Initializing provider plugins...
+- Finding hashicorp/kubernetes versions matching "2.3.2"...
+- Finding gavinbunney/kubectl versions matching "1.11.2"...
+...
+```
 
-3. Rename the `terraform.tfvars.sample` file to `terraform.tfvars`. Edit the `terraform.tfvars` file and replace the placeholders with your DOKS and GitHub information.
+3. Rename the `terraform.tfvars.sample` file to `terraform.tfvars`. Edit the file and replace the placeholders with your DOKS and GitHub information.
 
 ```text
 # DOKS 
@@ -152,34 +127,34 @@ git_repository_branch     = "<YOUR_GIT_REPOSITORY_BRANCH_HERE>"     # Branch nam
 git_repository_sync_path  = "<YOUR_GIT_REPOSITORY_SYNC_PATH_HERE>"  # Git repository path where the manifests to sync are committed (e.g.: `clusters/dev`)
 ```
 
-4. Create a plan and inspect the infrastructure changes:
+4. Create a Terraform plan and inspect the infrastructure changes:
 
-    ```shell
-    terraform plan -out doks_fluxcd_cluster.out
-    ```
+```shell
+terraform plan -out doks_fluxcd_cluster.out
+```
 
 5. Apply the changes:
 
-    ```shell
-    terraform apply "doks_fluxcd_cluster.out"
-    ```
+```shell
+terraform apply "doks_fluxcd_cluster.out"
+```
 
 The output looks similar to the following:
 
-    ```text
-    tls_private_key.main: Creating...
-    kubernetes_namespace.flux_system: Creating...
-    github_repository.main: Creating...
-    tls_private_key.main: Creation complete after 2s [id=1d5ddec06b0f4daeea57d3a987029c1153ebcb21]
-    kubernetes_namespace.flux_system: Creation complete after 2s [id=flux-system]
-    kubectl_manifest.install["v1/serviceaccount/flux-system/source-controller"]: Creating...
-    kubectl_manifest.sync["kustomize.toolkit.fluxcd.io/v1beta1/kustomization/flux-system/flux-system"]: Creating...
-    kubectl_manifest.install["v1/serviceaccount/flux-system/helm-controller"]: Creating...
-    kubectl_manifest.install["networking.k8s.io/v1/networkpolicy/flux-system/allow-egress"]: Creating...
-    ...
-    ```  
+```text
+tls_private_key.main: Creating...
+kubernetes_namespace.flux_system: Creating...
+github_repository.main: Creating...
+tls_private_key.main: Creation complete after 2s [id=1d5ddec06b0f4daeea57d3a987029c1153ebcb21]
+kubernetes_namespace.flux_system: Creation complete after 2s [id=flux-system]
+kubectl_manifest.install["v1/serviceaccount/flux-system/source-controller"]: Creating...
+kubectl_manifest.sync["kustomize.toolkit.fluxcd.io/v1beta1/kustomization/flux-system/flux-system"]: Creating...
+kubectl_manifest.install["v1/serviceaccount/flux-system/helm-controller"]: Creating...
+kubectl_manifest.install["networking.k8s.io/v1/networkpolicy/flux-system/allow-egress"]: Creating...
+...
+```  
     
-If everything goes well, the DOKS cluster and Flux will be up and running.
+The DOKS cluster and Flux are up and running.
 
 ![DOKS state](assets/img/doks_created.png)
 
@@ -187,15 +162,11 @@ Check that the Terraform state file is saved in your Spaces bucket.
 
 ![DO Spaces Terraform state file](assets/img/tf_state_s3.png)
 
-The Flux CD manifests for your DOKS cluster will also be present in your Git repository.
+Check that the Flux CD manifests for your DOKS cluster are also present in your Git repository.
 
 ![GIT repo state](assets/img/flux_git_res.png)
 
-A Git repository and branch is required beforehand to store Flux CD system manifests, as well as your Kubernetes custom application deployment manifests that will be managed automatically via Flux.
-
-This repository is a Terraform module basically, so please go ahead and inspect the options available inside the [variables.tf](variables.tf) file.
-
-## Step 3 - Inspecting Cluster State and Flux Deployment
+## Step 3 - Inspecting Cluster State
 
 List the available Kubernetes clusters:
 
@@ -229,6 +200,9 @@ dev-fluxcd-cluster-pool-8z9df   Ready    <none>   3d2h   v1.21.3
 dev-fluxcd-cluster-pool-8z9dq   Ready    <none>   3d2h   v1.21.3
 dev-fluxcd-cluster-pool-8z9dy   Ready    <none>   3d2h   v1.21.3
 ```
+
+## Step 3 - Inspecting Flux Deployment and Configuration
+
 Check the status of Flux:
 
 ```shell
@@ -269,7 +243,85 @@ NAME                      READY MESSAGE                        REVISION      SUS
 kustomization/flux-system True  Applied revision: main/1d69... main/1d69c... False  
 ```
 
-In case you need to perform some troubleshooting or see what Flux CD is doing, you can access the logs by running the following command:
+Flux comes with CRDs that let you define the required components for a GitOps-enabled environment. An associated Controller must be present as well to handle the CRDs and maintain their state, as defined in the manifest files.
+
+The following controllers come with Flux:
+
+- [Source Controller](https://fluxcd.io/docs/components/source/) - responsible for handling the [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) CRD.
+- [Kustomize Controller](https://fluxcd.io/docs/components/kustomize) - responsible for handling the [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) CRD.
+
+By default, Flux uses a [Git repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. The Git repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
+
+Terraform provisions the above resources for your DOKS cluster:
+
+- Git Repository `gitrepository/flux-system` CRD
+
+- the Kustomization `kustomization/flux-system` CRD
+
+Inspect the Git repository resource:
+
+```shell
+flux export source git flux-system
+```
+
+The output looks similar to:
+
+```text
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: GitRepository
+metadata:
+  ...
+spec:
+  gitImplementation: go-git
+  interval: 1m0s
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  timeout: 20s
+  url: ssh://git@github.com/test-github-user/test-git-repo.git
+```
+    
+In the `spec`, note the following parameter values:
+
+- `url`: The Git repository URL to sync manifests from, set to `ssh://git@github.com/test-github-user/test-git-repo.git` in this example.
+- `branch`:  The Git to use - set to `main` in this example.
+- `interval`: The time interval to use for syncing, set to `1 minute` by default. 
+
+Next, inspect the Kustomization resource:
+
+```shell
+flux export kustomization flux-system
+```
+
+The output looks similar to:
+
+```text
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta1
+kind: Kustomization
+metadata:
+...
+spec:
+  interval: 10m0s
+  path: ./clusters/dev
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  validation: client
+```
+
+In the `spec`, note the following parameter values:
+
+- `interval`:  The time interval to use for syncing, set to `10 minutes` by default.
+- `path`: The path from the Git repository where this Kustomization manifest is kept.
+- `sourceRef`: Shows that it is using another resource to fetch the manifests - a `GitRepository` in this case. The `name` field uniquely identifies the referenced resource - `flux-system`.
+
+To help you start very quickly, as well as to demonstrate the basic functionality of Flux, this example uses  a single cluster, synced from one Git repository and branch. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (for example, a separate branch per environment). You can find more information and examples on the Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure).
+
+In case you need to troubleshoot or see what Flux CD is doing, you can access the logs by running the following command:
 
 ```shell
 flux logs
@@ -284,163 +336,68 @@ The output looks similar to the following:
 ...
 ```
 
-## Step 3 - Inspect Flux Configuration
-
-Flux CD comes with CRDs that let you define the required components for a GitOps-enabled environment. An associated Controller must be present as well to handle the CRDs and maintain their state, as defined in the manifest files.
-
-The available controllers that come with Flux are as follows:
-
-- [Source Controller](https://fluxcd.io/docs/components/source/) - responsible for handling the [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) CRD.
-- [Kustomize Controller](https://fluxcd.io/docs/components/kustomize) - responsible for handling the [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) CRD.
-
-By default, Flux uses a [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. The Git repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
-
-Terraform provisions the above resources for your DOKS cluster, as shown below:
-
-```shell
-flux get all
-```
-
-The output looks similar to:
-
-```text
-NAME                      READY MESSAGE                         REVISION      SUSPENDED 
-gitrepository/flux-system True  Fetched revision: main/7cdc...  main/7cdc...  False     
-
-NAME                      READY MESSAGE                         REVISION      SUSPENDED 
-kustomization/flux-system True  Applied revision: main/7cdc...  main/7cdc...  False
-```
-
-You can see the Git Repository `gitrepository/flux-system` and the Kustomization `kustomization/flux-system` CRDs.
-
-Inspect the Git Repository resource:
-
-    ```shell
-    flux export source git flux-system
-    ```
-
-    The output looks similar to (metadata section content is hidden for simplicity):
-
-    ```text
-    ---
-    apiVersion: source.toolkit.fluxcd.io/v1beta1
-    kind: GitRepository
-    metadata:
-      ...
-    spec:
-      gitImplementation: go-git
-      interval: 1m0s
-      ref:
-        branch: main
-      secretRef:
-        name: flux-system
-      timeout: 20s
-      url: ssh://git@github.com/test-github-user/test-git-repo.git
-    ```
-
-The most relevant section to look for is the spec, which defines:
-
-- `Git` repository `url` to sync manifests from - `ssh://git@github.com/test-github-user/test-git-repo.git`, in this example.
-- The Git `branch` to use - set to `main` in this example.
-- The `interval` to use for syncing - set to `1 minute` by default. 
-
-Next, inspect the `Kustomization` resource:
-
-    ```shell
-    flux export kustomization flux-system
-    ```
-
-The output looks similar to:
-
-    ```text
-    ---
-    apiVersion: kustomize.toolkit.fluxcd.io/v1beta1
-    kind: Kustomization
-    metadata:
-    ...
-    spec:
-      interval: 10m0s
-      path: ./clusters/dev
-      prune: true
-      sourceRef:
-        kind: GitRepository
-        name: flux-system
-      validation: client
-      ...
-    ```
-
-The most relevant section to look for is the `spec`, which defines:
-
-- The `interval` used for syncing - set to `10 minutes` by default.
-- The `path` from the `Git` repository where this `Kustomization` manifests are kept.
-- `sourceRef` - an important parameter that reveals relationships between resources ! It shows you that it is using another resource to fetch the manifests - a `GitRepository` in this case. The `name` field uniquely identifies the referenced resource - `flux-system`.
-
-To help you start very quickly, as well as to demonstrate the basic functionality of `Flux`, the steps explained next focus on a `single` cluster, synced from one `Git` repository and `branch`. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (like a separate `branch` per `environment`, for example). More information and examples can be found on the official Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure) documentation page.
-
-## Step 4: Creating BusyBox Example Application Using Flux
+## Step 4: Creating a BusyBox Example Application Using Flux
 
 Configure Flux to create a simple Busybox application, using the sample manifests provided in the sample Git repository.
 
-The `kustomization/flux-system` CRD inspected at [Step 3 - Flux CD Configuration Overview](#step-3---flux-cd-configuration-overview), expects `Kustomization` manifests to be present in the Git repository path pointed by the `<git_repository_sync_path>` Terraform variable.
+The `kustomization/flux-system` CRD you inspected previously, expects the Kustomization manifests to be present in the Git repository path specified by the `git_repository_sync_path` Terraform variable specified in the `terraform.tfvars` file.
 
-Steps to follow:
+1. Clone the Git repository specified in the `terraform.tfvars` file. This is the main repository used for DOKS cluster reconciliation.
 
-1. Clone the `Git` repository defined in the `terraform.tfvars` file (please replace the `<>` placeholders accordingly). This is the main repository used for `DOKS` cluster reconciliation.
+```shell
+git clone git@github.com:<github_user>/<git_repository_name>.git
+```
 
-   ```shell
-   git clone git@github.com:<github_user>/<git_repository_name>.git
-   ```
+2. Change directory where you cloned the repository:
 
-2. Change directory where repository was cloned (please replace the `<>` placeholders accordingly, as defined in the `terraform.tfvars` file):
+```shell
+cd <git_repository_name>
+```
 
-    ```shell
-    cd <git_repository_name>
-    ```
+3. Optionally, checkout the branch if you are not using the `main` branch:
 
-3. Optional, if not using the `main` branch (please replace the `<>` placeholders accordingly, as defined in the `terraform.tfvars` file):
+```shell
+git checkout <git_repository_branch>
+```
 
-    ```shell
-    git checkout <git_repository_branch>
-    ```
+4. Next, create the `applications` directory, to store the `busybox` example manifests:
 
-4. Next, create the `applications` directory, to store the `busybox` example manifests (please replace the `<>` placeholders accordingly, as defined in the `terraform.tfvars` file):
+```shell
+APPS_PATH="<git_repository_sync_path>/apps/busybox"
 
-    ```shell
-    APPS_PATH="<git_repository_sync_path>/apps/busybox"
-
-    mkdir -p "$APPS_PATH"
-    ```
+mkdir -p "$APPS_PATH"
+```
 
 5. Download the following manifests, using the directory path created in the previous step:
-    - [busybox-ns](assets/manifests/busybox-ns.yaml) (creates the `busybox` app namespace)
-    - [busybox](assets/manifests/busybox.yaml) (creates the `busybox` app itself)
-    - [kustomization](assets/manifests/kustomization.yaml) (`kustomization` for the above)
+- [busybox-ns](assets/manifests/busybox-ns.yaml): Creates the `busybox` app namespace
+- [busybox](assets/manifests/busybox.yaml): Creates the `busybox` app
+- [kustomization](assets/manifests/kustomization.yaml): `kustomization` for BusyBox
 
-    **Hint:**
+**Hint:**
 
-    If you have `curl` installed, the following can be used to fetch the required files:
+If you have `curl` installed, you can fetch the required files using the following command:
 
-    ```shell
-    curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/busybox-ns.yaml > "${APPS_PATH}/busybox-ns.yaml"
+```shell
+curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/busybox-ns.yaml > "${APPS_PATH}/busybox-ns.yaml"
 
-    curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/busybox.yaml > "${APPS_PATH}/busybox.yaml"
+curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/busybox.yaml > "${APPS_PATH}/busybox.yaml"
 
-    curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/kustomization.yaml > "${APPS_PATH}/kustomization.yaml"
-    ```
+curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/kustomization.yaml > "${APPS_PATH}/kustomization.yaml"
+```
 
 6. Commit the files and push the changes:
 
-    ```shell
-    git add -A
+```shell
+git add -A
 
-    git commit -am "Busybox Kustomization manifests"
+git commit -am "Busybox Kustomization manifests"
 
-    git push origin
-    ```
+git push origin
+```
 
 ### STEP 5: Inspecting the Results
 
-After one minute or so (if using the default settings), the `busybox` namespace and associated pod is created and running. If you do not want to wait, you can force reconciliation using the following command:
+After one minute or so (if using the default settings), a `busybox` namespace and an associated pod is created and running. If you do not want to wait, you can force reconciliation using the following command:
 
 ```shell
 flux reconcile source git flux-system
@@ -487,7 +444,7 @@ Examine the Kubernetes namespaces:
 kubectl get ns
 ```
 
-The output should be something similar to (notice the `busybox` line):
+The output looks similar to the following:
 
 ```text
 NAME              STATUS   AGE
@@ -505,7 +462,7 @@ Check the `busybox` pod:
 kubectl get pods -n busybox
 ```
 
-The output should be something similar to (notice the `busybox1` line):
+The output looks similar to the following:
 
 ```text
 NAME       READY   STATUS    RESTARTS   AGE
@@ -514,7 +471,7 @@ busybox1   1/1     Running   0          42s
 
 ## Step 6: Deleting the Resources
 
-If you want to clean up the allocated resources, run the following command from the directory where this repository was cloned on your local machine:
+If you want to clean up the allocated resources, run the following command from the directory where you cloned this repository on your local machine:
 
 ```shell
 terraform destroy

@@ -2,7 +2,7 @@
 
 [Terraform](https://www.terraform.io) is one of the most popular tools to write infrastructure as code using declarative configuration files. You can write concise descriptions of resources using blocks, arguments, and expressions. 
 
-[Flux](https://fluxcd.io) is used for managing the continuous delivery of applications inside the DOKS cluster and enable GitOps. The built-in [controllers](https://fluxcd.io/docs/components) help you create the required GitOps resources.
+[Flux](https://fluxcd.io) is used for managing the continuous delivery of applications inside a DOKS cluster and enable GitOps. The built-in [controllers](https://fluxcd.io/docs/components) help you create the required GitOps resources.
 
 This tutorial will guide you on how to use [Flux](https://fluxcd.io) to manage application deployments on a DigitalOcean Kubernetes(DOKS) cluster in a GitOps fashion. Terraform will be responsible with spinning up the DOKS cluster as well as Flux. In the end, you will also tell Flux to perform a basic deployment of the BusyBox Docker application.
 
@@ -69,7 +69,7 @@ First, you are going to initialize the Terraform backend. Next, you will create 
 
 1. Rename the provided `backend.tf.sample` file from the sample repository to `backend.tf`. Edit the file and replace the placeholders with your bucket and name of the Terraform state file you want to create.
 
-We highly recommend using a [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the Terraform state file. As long as the space is private, your sensitive data is secure. The data is also backed up and you can perform collaborative work using your Space.
+We strongly recommend using a [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the Terraform state file. As long as the space is private, your sensitive data is secure. The data is also backed up and you can perform collaborative work using your Space.
 
 ```text
 # Store the state file using a DO Spaces bucket
@@ -166,7 +166,7 @@ Check that the Flux CD manifests for your DOKS cluster are also present in your 
 
 ![GIT repo state](assets/img/flux_git_res.png)
 
-## Step 3 - Inspecting Cluster State
+## Step 3 - Inspecting DOKS Cluster State
 
 List the available Kubernetes clusters:
 
@@ -227,6 +227,15 @@ The output looks similar to the following:
 ✔ all checks passed
 ```
 
+Flux comes with CRDs that let you define the required components for a GitOps-enabled environment. An associated Controller must also be present to handle the CRDs and maintain their state, as defined in the manifest files.
+
+The following controllers come with Flux:
+
+- [Source Controller](https://fluxcd.io/docs/components/source/) - responsible for handling the [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) CRD.
+- [Kustomize Controller](https://fluxcd.io/docs/components/kustomize) - responsible for handling the [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) CRD.
+
+By default, Flux uses a [Git repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. The Git repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
+
 Inspect all the Flux resources:
 
 ```shell
@@ -243,22 +252,7 @@ NAME                      READY MESSAGE                        REVISION      SUS
 kustomization/flux-system True  Applied revision: main/1d69... main/1d69c... False  
 ```
 
-Flux comes with CRDs that let you define the required components for a GitOps-enabled environment. An associated Controller must be present as well to handle the CRDs and maintain their state, as defined in the manifest files.
-
-The following controllers come with Flux:
-
-- [Source Controller](https://fluxcd.io/docs/components/source/) - responsible for handling the [Git Repository](https://fluxcd.io/docs/components/source/gitrepositories) CRD.
-- [Kustomize Controller](https://fluxcd.io/docs/components/kustomize) - responsible for handling the [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) CRD.
-
-By default, Flux uses a [Git repository](https://fluxcd.io/docs/components/source/gitrepositories) and a [Kustomization](https://fluxcd.io/docs/components/kustomize/kustomization) resource. The Git repository tells Flux where to sync files from, and points to a Git repository and branch. The Kustomization resource tells Flux where to find your application `kustomizations`.
-
-Terraform provisions the above resources for your DOKS cluster:
-
-- Git Repository `gitrepository/flux-system` CRD
-
-- the Kustomization `kustomization/flux-system` CRD
-
-Inspect the Git repository resource:
+Terraform provisions the above resources for your DOKS cluster. Inspect the Git repository resource:
 
 ```shell
 flux export source git flux-system
@@ -319,8 +313,6 @@ In the `spec`, note the following parameter values:
 - `path`: The path from the Git repository where this Kustomization manifest is kept.
 - `sourceRef`: Shows that it is using another resource to fetch the manifests - a `GitRepository` in this case. The `name` field uniquely identifies the referenced resource - `flux-system`.
 
-To help you start very quickly, as well as to demonstrate the basic functionality of Flux, this example uses  a single cluster, synced from one Git repository and branch. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (for example, a separate branch per environment). You can find more information and examples on the Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure).
-
 In case you need to troubleshoot or see what Flux CD is doing, you can access the logs by running the following command:
 
 ```shell
@@ -338,7 +330,7 @@ The output looks similar to the following:
 
 ## Step 4: Creating a BusyBox Example Application Using Flux
 
-Configure Flux to create a simple Busybox application, using the sample manifests provided in the sample Git repository.
+Configure Flux to create a simple BusyBox application, using the sample manifests provided in the sample Git repository.
 
 The `kustomization/flux-system` CRD you inspected previously, expects the Kustomization manifests to be present in the Git repository path specified by the `git_repository_sync_path` Terraform variable specified in the `terraform.tfvars` file.
 
@@ -536,6 +528,8 @@ module "doks_flux_cd" {
 You can instantiate it as many times as required and target different cluster configurations and environments. For more information, please visit the official [Terraform Modules](https://www.terraform.io/docs/language/modules/index.html) documentation page.
 
 ## What's Next
+
+To help you start very quickly, as well as to demonstrate the basic functionality of Flux, this example uses  a single cluster, synced from one Git repository and branch. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (for example, a separate branch per environment). You can find more information and examples on the Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure).
 
 Flux supports other Controllers, such as the following, which you can configure and enable:
 

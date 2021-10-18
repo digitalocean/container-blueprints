@@ -10,9 +10,7 @@ The following diagram illustrates the DOKS cluster, Terraform and Flux setup:
 
 ![TF-DOKS-FLUX-CD](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/assets/img/tf_doks_fluxcd_flow.png?raw=true)
 
-{{< notice note >}}Following the steps below will result in charges for the use of DigitalOcean resources. [Delete the resources](#step-6-deleting-the-resources) to avoid being billed for additional resources.
-{{< /notice >}}
-
+**Note**: Following the steps below will result in charges for the use of DigitalOcean resources. [Delete the resources](#step-6-deleting-the-resources) to avoid being billed for additional resources.
 
 ## Prerequisites
 

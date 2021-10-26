@@ -1,49 +1,40 @@
 # Create a GitOps Stack Using DigitalOcean Kubernetes and Flux CD
 
-[Terraform](https://www.terraform.io) is one of the most popular tools to write infrastructure as code using declarative configuration files. You can write concise descriptions of resources using blocks, arguments, and expressions. 
+This tutorial will guide you on how to use [Flux](https://fluxcd.io) to manage application deployments on a DigitalOcean Kubernetes (DOKS) cluster in a GitOps fashion. [Terraform](https://www.terraform.io) will be responsible with spinning up the DOKS cluster as well as Flux. In the end, you will also tell Flux to perform a basic deployment of the BusyBox Docker application.
 
-[Flux](https://fluxcd.io) is used for managing the continuous delivery of applications inside a DOKS cluster and enable GitOps. The built-in [controllers](https://fluxcd.io/docs/components) help you create the required GitOps resources.
+Terraform is one of the most popular tools to write infrastructure-as-code using declarative configuration files. You can write concise descriptions of resources using blocks, arguments, and expressions. 
 
-This tutorial will guide you on how to use [Flux](https://fluxcd.io) to manage application deployments on a DigitalOcean Kubernetes(DOKS) cluster in a GitOps fashion. Terraform will be responsible with spinning up the DOKS cluster as well as Flux. In the end, you will also tell Flux to perform a basic deployment of the BusyBox Docker application.
+Flux is used for managing the continuous delivery of applications inside a DOKS cluster and enable GitOps. The built-in [controllers](https://fluxcd.io/docs/components) help you create the required GitOps resources.
 
 The following diagram illustrates the DOKS cluster, Terraform and Flux setup:
 
 ![TF-DOKS-FLUX-CD](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/assets/img/tf_doks_fluxcd_flow.png?raw=true)
 
-**Note**: Following the steps below will result in charges for the use of DigitalOcean resources. [Delete the resources](#step-6-deleting-the-resources) to avoid being billed for additional resources.
+{{< notice note >}}Following the steps below will result in charges for the use of DigitalOcean resources. [Delete the resources](#step-7-deleting-the-resources) at the end of this tutorial to avoid being billed for additional resources.
+{{< /notice >}}
 
 ## Prerequisites
 
 To complete this tutorial, you will need:
 
-- A [GitHub](https://github.com) repository and branch for Flux CD to store cluster and your Kubernetes custom application deployment manifests.
+- A [GitHub](https://github.com) repository and branch for Flux CD to store the cluster and your Kubernetes custom application deployment manifests.
 
 - A GitHub [personal access token](https://github.com/settings/tokens) that has the repo permissions set. The [Terraform module](https://www.terraform.io/docs/language/modules/index.html) provided in this tutorial needs it in order to create the SSH deploy key, and to commit the Flux CD cluster manifests in your Git repository.
 
-- A [git client](https://git-scm.com/downloads). For example, use the following commands to install on MacOS:
-
-  ```shell
-  brew info git
-  brew install git
-  ```
+- A [git client](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
 
 - A [DigitalOcean access token](https://docs.digitalocean.com/reference/api/create-personal-access-token) for creating and managing the DOKS cluster. Copy the token value and save it somewhere safe.
 
 - A [DigitalOcean Space](https://docs.digitalocean.com/products/spaces/how-to/create/) for storing the Terraform state file. Make sure that it is set to restrict file listing for security reasons.
 
-- [Access keys](https://docs.digitalocean.com/products/spaces/how-to/manage-access/) for DigitalOcean Spaces. Copy the `key` and `secret` values and save each in a local environment variable for using later:
+- [Access keys](https://docs.digitalocean.com/products/spaces/how-to/manage-access/) for DigitalOcean Spaces. Copy the `key` and `secret` values and save each in a local environment variable to use later:
 
   ```shell
   export DO_SPACES_ACCESS_KEY="<YOUR_DO_SPACES_ACCESS_KEY>"
   export DO_SPACES_SECRET_KEY="<YOUR_DO_SPACES_SECRET_KEY>"
   ```
 
-- [Terraform](https://www.terraform.io/downloads.html). For example, use the following commands to install on MacOS:
-
-  ```shell
-  brew info terraform
-  brew install terraform
-  ```
+- [Terraform](https://docs.digitalocean.com/reference/terraform/getting-started/#install-terraform).
 
 - [`doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install) for interacting with DigitalOcean API.
 
@@ -67,14 +58,14 @@ This repository is a Terraform module. You can inspect the options available ins
 
 The bootstrap process creates a DOKS cluster and provisions Flux using Terraform. 
 
-First, you are going to initialize the Terraform backend. Next, you will create a Terraform plan to inspect the infrastructure and then apply it to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
+First, you are going to initialize the Terraform backend. Then, you will create a Terraform plan to inspect the infrastructure and apply it to create all the required resources. After it finishes, you should have a fully functional DOKS cluster with Flux CD deployed and running. Follow these steps to bootstrap DOKS and Flux:
 
-1. Rename the provided [`backend.tf.sample`](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/backend.tf.sample) file to `backend.tf`. Edit the file and replace the placeholders with your bucket and name of the Terraform state file you want to create.
+1. Rename the provided [`backend.tf.sample`](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/backend.tf.sample) file to `backend.tf`. Edit the file and replace the placeholder values with your bucket's and Terraform state file's name you want to create.
 
     We strongly recommend using a [DigitalOcean Spaces](https://cloud.digitalocean.com/spaces) bucket for storing the Terraform state file. As long as the space is private, your sensitive data is secure. The data is also backed up and you can perform collaborative work using your Space.
 
     ```text
-    # Store the state file using a DO Spaces bucket
+    # Store the state file using a DigitalOcean Spaces bucket
 
     terraform {
       backend "s3" {
@@ -93,7 +84,7 @@ First, you are going to initialize the Terraform backend. Next, you will create 
     Use the previously created DO Spaces access and secret keys to initialize the Terraform backend:
 
     ```shell
-    terraform init  --backend-config="access_key=$DO_SPACES_ACCESS_KEY" --backend-config="secret_key=$DO_SPACES_SECRET_KEY"
+    terraform init  --backend-config="access_key=$DigitalOcean_SPACES_ACCESS_KEY" --backend-config="secret_key=$DO_SPACES_SECRET_KEY"
     ```
 
     The output looks similar to the following:
@@ -110,11 +101,11 @@ First, you are going to initialize the Terraform backend. Next, you will create 
     ...
     ```
 
-3. Rename the `terraform.tfvars.sample` file to `terraform.tfvars`. Edit the file and replace the placeholders with your DOKS and GitHub information.
+3. Rename the `terraform.tfvars.sample` file to `terraform.tfvars`. Edit the file and replace the placeholder values with your DOKS and GitHub information.
 
     ```text
     # DOKS 
-    do_api_token                 = "<YOUR_DO_API_TOKEN_HERE>"                 # DO API TOKEN
+    do_api_token                 = "<YOUR_DO_API_TOKEN_HERE>"                 # DigitalOcean API TOKEN
     doks_cluster_name            = "<YOUR_DOKS_CLUSTER_NAME_HERE>"            # Name of this `DOKS` cluster 
     doks_cluster_region          = "<YOUR_DOKS_CLUSTER_REGION_HERE>"          # What region should this `DOKS` cluster be provisioned in?
     doks_cluster_version         = "<YOUR_DOKS_CLUSTER_VERSION_HERE>"         # What Kubernetes version should this `DOKS` cluster use ?
@@ -162,7 +153,7 @@ First, you are going to initialize the Terraform backend. Next, you will create 
 
     Check that the Terraform state file is saved in your Spaces bucket.
 
-      ![DO Spaces Terraform state file](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/assets/img/tf_state_s3.png?raw=true)
+      ![DigitalOcean Spaces Terraform state file](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/assets/img/tf_state_s3.png?raw=true)
 
     Check that the Flux CD manifests for your DOKS cluster are also present in your Git repository.
 
@@ -282,7 +273,7 @@ spec:
 In the `spec`, note the following parameter values:
 
 - `url`: The Git repository URL to sync manifests from, set to `ssh://git@github.com/test-github-user/test-git-repo.git` in this example.
-- `branch`:  The Git to use - set to `main` in this example.
+- `branch`:  The repository branch to use - set to `main` in this example.
 - `interval`: The time interval to use for syncing, set to `1 minute` by default. 
 
 Next, inspect the Kustomization resource:
@@ -371,7 +362,7 @@ The `kustomization/flux-system` CRD you inspected previously, expects the Kustom
 
 **Hint:**
 
-If you have `curl` installed, you can fetch the required files using the following command:
+If you have `curl` installed, you can fetch the required files using the following commands:
 
 ```shell
 curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/create-doks-with-terraform-flux/assets/manifests/busybox-ns.yaml > "${APPS_PATH}/busybox-ns.yaml"
@@ -393,7 +384,7 @@ git push origin
 
 ## STEP 6: Inspecting the Results
 
-If you are using the default settings, a `busybox` namespace and an associated pod is created and running after one minute or so. If you do not want to wait, you can force reconciliation using the following command:
+If you are using the default settings, a `busybox` namespace and an associated pod is created and running after about one minute. If you do not want to wait, you can force reconciliation using the following command:
 
 ```shell
 flux reconcile source git flux-system
@@ -465,7 +456,7 @@ NAME       READY   STATUS    RESTARTS   AGE
 busybox1   1/1     Running   0          42s
 ```
 
-## Step 6: Deleting the Resources
+## Step 7: Deleting the Resources
 
 If you want to clean up the allocated resources, run the following command from the directory where you cloned this repository on your local machine:
 
@@ -512,8 +503,8 @@ module "doks_flux_cd" {
   source = "github.com/digitalocean/container-blueprints/create-doks-with-terraform-flux"
 
   # DOKS 
-  do_api_token                 = "<YOUR_DO_API_TOKEN_HERE>"                 # DO API TOKEN
-  doks_cluster_name            = "<YOUR_DOKS_CLUSTER_NAME_HERE>"            # Name of this `DOKS` cluster ?
+  do_api_token                 = "<YOUR_DO_API_TOKEN_HERE>"                 # DigitalOcean API TOKEN
+  doks_cluster_name            = "<YOUR_DOKS_CLUSTER_NAME_HERE>"            # Name of this `DOKS` cluster?
   doks_cluster_region          = "<YOUR_DOKS_CLUSTER_REGION_HERE>"          # What region should this `DOKS` cluster be provisioned in?
   doks_cluster_version         = "<YOUR_DOKS_CLUSTER_VERSION_HERE>"         # What Kubernetes version should this `DOKS` cluster use ?
   doks_cluster_pool_size       = "<YOUR_DOKS_CLUSTER_POOL_SIZE_HERE>"       # What machine type to use for this `DOKS` cluster ?
@@ -533,12 +524,12 @@ You can instantiate it as many times as required and target different cluster co
 
 ## What's Next
 
-To help you start very quickly, as well as to demonstrate the basic functionality of Flux, this example uses  a single cluster, synced from one Git repository and branch. There are many options available depending on your setup and what the final goal is. You can create as many Git Repository resources as you want, that point to different repositories and/or branches (for example, a separate branch per environment). You can find more information and examples on the Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure).
+To help you start quickly, as well as to demonstrate the basic functionality of Flux, this example uses a single cluster, synced from one Git repository and branch. There are many options available depending on your setup and what the final goal is. You can create as many Git repository resources as you want, that point to different repositories and/or branches, for example, a separate branch per environment. You can find more information and examples on the Flux CD [Repository Structure Guide](https://fluxcd.io/docs/guides/repository-structure).
 
-Flux supports other Controllers, such as the following, which you can configure and enable:
+Flux supports other controllers, such as the following, which you can configure and enable:
 
-- [Notification Controller](https://fluxcd.io/docs/components/notification) which is specialized in handling inbound and outbound events for Slack, etc.
+- [Notification Controller](https://fluxcd.io/docs/components/notification) which is specialized in handling inbound and outbound events for Slack and other messaging services.
 - [Helm Controller](https://fluxcd.io/docs/components/helm) for managing [Helm](https://helm.sh) chart releases.
 - [Image Automation Controller](https://fluxcd.io/docs/components/image) which can update a Git repository when new container images are available.
 
-See [Flux CD Guides](https://fluxcd.io/docs/guides) for more example such as how to structure your Git repositories, as well as application manifests for multi-cluster and multi-environment setups.
+See [Flux CD Guides](https://fluxcd.io/docs/guides) for more examples, such as how to structure your Git repositories, as well as application manifests for multi-cluster and multi-environment setups.

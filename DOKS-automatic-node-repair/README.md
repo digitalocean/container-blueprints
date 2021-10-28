@@ -1,129 +1,106 @@
 # Replacing Unhealthy DOKS Cluster Nodes Automatically
 
-## Problem Description
-
-When a node in a `DOKS` cluster is unhealthy, it is a manual, cumbersome process to replace the node automatically. Without doing it, cluster will operate at lower capacity, because the unhealthy nodes will not run any Pods.
-
-This tutorial provides an automated way to `recycle` the `unhealthy nodes` in `DOKS`. 
-
-
-## Solution:
+When a node in a DOKS cluster is unhealthy, it is a manual and cumbersome process to replace the node automatically. Without replacing the nodes, the cluster will operate at lower capacity because the unhealthy nodes will not run any Pods. This tutorial provides an automated way to recycle unhealthy nodes in a DigitalOcean Kubernetes (DOKS) cluster. 
 
 We can achieve this using one of the following:
  - [Digital Mobius](https://github.com/Qovery/digital-mobius)
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
 
-For the use case described in this tutorial, we will use [Digital Mobius](https://github.com/Qovery/digital-mobius). We will deploy to a running DOKS cluster and observe how well it handles cluster nodes recycling.
+For this tutorial, we will use Digital Mobius. We will deploy it to a running DOKS cluster and observe it handle cluster nodes recycling.
 
-Main reasons to consider `Digital Mobius` are:
- - Specifically built for `DOKS` cluster nodes recycling.
+Digital Mobius is:
+ - Specifically built for DOKS cluster nodes recycling
  - Open source (written in [Go](https://golang.org)).
- - Simplicity and ease of configuration.
+ - Simple and easy to configure
  - [Helm chart](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) ready and available for easy Kubernetes deployment (or [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius))
 
 To learn more, see [Overview](#Overview).
 
-## Set Up DOKS Cluster
+## Prerequisites
 
-### Requirements
+To complete this tutorial, you will need:
 
-1. A DigitalOcean [account](https://cloud.digitalocean.com) to create the access keys and provision the DOKS cluster.
-2. An API access token for managing the DOKS cluster. To create the access token, from your DigitalOcean account, go to the [API](https://cloud.digitalocean.com/account/api) section to generate the token:
+- A [DigitalOcean access token](https://docs.digitalocean.com/reference/api/create-personal-access-token) for managing the DOKS cluster. Ensure that the access token has read-write scope.
 
-    ![Applications & API Key](content/img/pt_gen_1st.png)
+Copy the token value and save it in a local environment variable as you will need it later on:
 
-    Give it a name and ensure that the `Write` scope is checked:
+```bash
+export DIGITAL_OCEAN_TOKEN="<your_do_personal_access_token>"
+```
 
-    ![Applications & API Key](content/img/pt_gen_2nd.png)
+- [`doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install) for interacting with the DOKS cluster.
 
-    In the end, you should have something like this:
-
-    ![Applications & API Key](content/img/api_access_key.png)
-
-    Copy the token value and save it in a local environment variable as you will need it later on (make sure to replace the `<>` placeholder):
-
-    ```bash
-    export DIGITAL_OCEAN_TOKEN="<your_do_personal_access_token>"
-    ```
-3. The `doctl` command-line tool to interact with the cluster. For example, use the following commands on MacOS to install `doctl`:
-    
-    ```bash
-    brew info doctl
-    brew install doctl
-    ```
-
-After installation, initialize `doctl` using the `DigitalOcean` personal access token:
+Initialize `doctl` using the following command:
    
  ```bash
  doctl auth init --access-token "$DIGITAL_OCEAN_TOKEN"
  ```
 
- The output looks similar to the following (token value is masked):
- 
- ```
- Using token [*****************************************]
+### Requirements
 
- Validating token... OK
-```
 
-### Create a DOKS Cluster
+## STEP 1: Creating a DOKS Cluster
 
 1. Spin up the cluster and wait for it to be provisioned:
 
-    ```bash
-    export CLUSTER_NAME="mobius-testing-cluster"
-    export CLUSTER_REGION="lon1"                  # grab a region that's more close to you from: doctl k8s options regions
-    export CLUSTER_NODE_SIZE="s-2vcpu-4gb"
-    export CLUSTER_NODE_COUNT=2                   # need 2 nodes at least to test the real world scenario
-    export CLUSTER_NODE_POOL_NAME="mbt-np"
-    export CLUSTER_NODE_POOL_TAG="mbt-cluster"
-    export CLUSTER_NODE_POOL_LABEL="type=basic"
+```bash
+export CLUSTER_NAME="mobius-testing-cluster"
+export CLUSTER_REGION="lon1"                  # grab a region that's more close to you from: doctl k8s options regions
+export CLUSTER_NODE_SIZE="s-2vcpu-4gb"
+export CLUSTER_NODE_COUNT=2                   # need 2 nodes at least to test the real world scenario
+export CLUSTER_NODE_POOL_NAME="mbt-np"
+export CLUSTER_NODE_POOL_TAG="mbt-cluster"
+export CLUSTER_NODE_POOL_LABEL="type=basic"
 
-    doctl k8s cluster create "$CLUSTER_NAME" \
-      --auto-upgrade=false \
-      --node-pool "name=${CLUSTER_NODE_POOL_NAME};size=${CLUSTER_NODE_SIZE};count=${CLUSTER_NODE_COUNT};tag=${CLUSTER_NODE_POOL_TAG};label=${CLUSTER_NODE_POOL_LABEL}" \
+doctl k8s cluster create "$CLUSTER_NAME" \
+  --auto-upgrade=false \
+  --node-pool "name=${CLUSTER_NODE_POOL_NAME};size=${CLUSTER_NODE_SIZE};count=${CLUSTER_NODE_COUNT};tag=${CLUSTER_NODE_POOL_TAG};label=${CLUSTER_NODE_POOL_LABEL}" \
       --region "$CLUSTER_REGION"
-    ```
+```
 
-    The output looks similar to the following:
+The output looks similar to the following:
 
-    ```
-    Notice: Cluster is provisioning, waiting for cluster to be running
-    ......................................................................
-    Notice: Cluster created, fetching credentials
-    Notice: Adding cluster credentials to kubeconfig file found in "~/.kube/config"
-    Notice: Setting current-context to do-lon1-mobius-testing-cluster
-    ID                                      Name                       Region    Version        Auto Upgrade    Status     Node Pools
-    11bdd0f1-8bd0-42dc-a3af-7a83bc319295    mobius-testing-cluster     lon1      1.21.2-do.2    false           running    basicnp
-    ```
+```
+Notice: Cluster is provisioning, waiting for cluster to be running
+......................................................................
+Notice: Cluster created, fetching credentials
+Notice: Adding cluster credentials to kubeconfig file found in "~/.kube/config"
+Notice: Setting current-context to do-lon1-mobius-testing-cluster
+ID                                      Name                       Region    Version        Auto Upgrade    Status     Node Pools
+11bdd0f1-8bd0-42dc-a3af-7a83bc319295    mobius-testing-cluster     lon1      1.21.2-do.2    false           running    basicnp
+```
 
-2. Get worker nodes status:
+2. [Authenticate](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#doctl) your cluster:
 
-    ```bash
-    kubectl get nodes
-    ```
+```shell
+doctl k8s cluster kubeconfig save <your_doks_cluster_name>
+```
 
-    The output looks similar to the following:
+3. [Check that the current context](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/#contexts) points to your cluster:
 
-    ```
-    NAME            STATUS   ROLES    AGE     VERSION
-    basicnp-8k4ep   Ready    <none>   2m52s   v1.21.2
-    basicnp-8k4es   Ready    <none>   2m16s   v1.21.2
-    ```
+```shell
+kubectl config get-contexts
+```
 
-    ### Note:
+4. Get worker nodes status:
 
-      If the `kubectl` context is not set properly, use the following command to set the context:
-      
-      ```bash
-      doctl k8s cluster kubeconfig save "$CLUSTER_NAME"
-      ```
+```bash
+kubectl get nodes
+```
+
+The output looks similar to the following:
+
+```
+NAME            STATUS   ROLES    AGE     VERSION
+basicnp-8k4ep   Ready    <none>   2m52s   v1.21.2
+basicnp-8k4es   Ready    <none>   2m16s   v1.21.2
+```
 
 ## Digital Mobius
 
 ### Overview
 
-[Digital Mobius](https://github.com/Qovery/digital-mobius) is an open source project written in the `Go` language which can automatically recycle unhealthy nodes from a `DigitalOcean Kubernetes` cluster (aka `DOKS`).
+[Digital Mobius](https://github.com/Qovery/digital-mobius) is an open source project written in the `Go` language which can automatically recycle unhealthy nodes from a DOKS cluster.
 
 ### How it Works
 

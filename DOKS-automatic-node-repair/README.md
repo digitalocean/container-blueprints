@@ -1,20 +1,18 @@
 # Replacing Unhealthy DOKS Cluster Nodes Automatically
 
-When a node in a DOKS cluster is unhealthy, it is a manual and cumbersome process to replace the node automatically. Without replacing the nodes, the cluster will operate at lower capacity because the unhealthy nodes will not run any Pods. This tutorial provides an automated way to recycle unhealthy nodes in a DigitalOcean Kubernetes (DOKS) cluster. 
+This tutorial provides an automated way to recycle unhealthy nodes in a DigitalOcean Kubernetes (DOKS) cluster.  When a node in a DOKS cluster is unhealthy, it is a manual and cumbersome process to replace the node automatically. Without replacing the nodes, the cluster will operate at lower capacity because the unhealthy nodes will not run any Pods. 
 
-We can achieve this using one of the following:
+You can automatically replace unhealthy nodes using one of the following:
+
  - [Digital Mobius](https://github.com/Qovery/digital-mobius)
+ 
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
 
-For this tutorial, we will use Digital Mobius. We will deploy it to a running DOKS cluster and observe it handle cluster nodes recycling.
+For this tutorial, we will deploy Digital Mobius on a running DOKS cluster. Digital Mobius is an open-source application written in Go and is specifically built for DOKS cluster nodes recycling. The application monitors DOKS cluster nodes that are in an unhealthy state. A node is considered to be unhealthy if the [node condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is `Ready` and the status is `False` or `Unknown`. You can also specify the time interval before an unhealthy node needs to be recycled. If all these conditions are met, then the application recreates the affected node(s) using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node).It is [Helm chart-ready](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) and available for easy Kubernetes deployment (or [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius)).
 
-Digital Mobius is:
- - Specifically built for DOKS cluster nodes recycling
- - Open source (written in [Go](https://golang.org)).
- - Simple and easy to configure
- - [Helm chart](https://github.com/Qovery/digital-mobius/tree/main/charts/Digital-Mobius) ready and available for easy Kubernetes deployment (or [artifacthub.io](https://artifacthub.io/packages/helm/digital-mobius/digital-mobius))
+Below is a simplified diagram showing how Digital Mobius checks the worker node(s) state:
 
-To learn more, see [Overview](#Overview).
+ ![Digital Mobius Flow](https://github.com/digitalocean/container-blueprints/blob/main/DOKS-automatic-node-repair/content/img/digital-mobius-flow.png?raw=true)
 
 ## Prerequisites
 
@@ -35,9 +33,6 @@ Initialize `doctl` using the following command:
  ```bash
  doctl auth init --access-token "$DIGITAL_OCEAN_TOKEN"
  ```
-
-### Requirements
-
 
 ## STEP 1: Creating a DOKS Cluster
 
@@ -97,18 +92,6 @@ basicnp-8k4es   Ready    <none>   2m16s   v1.21.2
 ```
 
 ## Digital Mobius
-
-### Overview
-
-[Digital Mobius](https://github.com/Qovery/digital-mobius) is an open source project written in the `Go` language which can automatically recycle unhealthy nodes from a DOKS cluster.
-
-### How it Works
-
-`Digital Mobius` monitors for `DOKS` cluster nodes that are in an unhealthy state at specified regular intervals. A `node` is considered to be `unhealthy` if the [Node Condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is set to `Ready` and the status to `False` or `Unknown`. The application checks for the `Unknown` status of the node. A node is in `Unknown` status when the `master` node is not able to communicate with it via the `kubelet`. You can also specify how much `time` has to pass before an unhealthy node needs to be recycled. If all the conditions enumerated earlier are met, then the application recreates the affected node(s). It does so using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node).
-
-Below is a simplified diagram showing how `Digital Mobius` checks the worker node(s) state:
-
-![Digital Mobius Flow](content/img/digital-mobius-flow.png)
 
 ### Configuration Overview
 

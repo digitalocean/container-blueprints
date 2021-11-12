@@ -4,7 +4,7 @@ This tutorial provides an automated way to recycle unhealthy nodes in a DigitalO
 
 You can automatically replace unhealthy nodes using one of the following applications:
 
- - [Digital Mobius](https://github.com/Qovery/digital-mobius)
+ - [Digital Mobius](https://github.com/Qovery/digital-mobius) provided by [Qovery](https://github.com/Qovery)
  
  - [Draino](https://github.com/planetlabs/draino) and [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
 
@@ -45,6 +45,8 @@ cd container-blueprints/DOKS-automatic-node-repair
 ```
 
 ## STEP 2: Creating a DOKS Cluster
+
+If you already have a DOKS cluster, skip to [STEP 3: Configuring Digital Mobius](#step-3-configuring-digital-mobius).
 
 1. Spin up the cluster and wait for it to be provisioned:
 
@@ -364,7 +366,3 @@ In this tutorial, we automatically recover cluster nodes in case the kubelet ser
 ## Contributing
 
 For suggestions or ideas, please open a PR or create an issue. We value your feedback!
-
-## Credits
-
-Credits go to [Qovery](https://github.com/Qovery) and contributors for providing the original software used in this tutorial.

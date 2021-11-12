@@ -274,6 +274,7 @@ A prompt that looks similar to the following appears:
     ```
     root@basicnp-8hx1a:~#
     ```
+    
 Inspect the system service:
 
     ```bash
@@ -281,12 +282,12 @@ Inspect the system service:
     systemctl status kubelet
     ```
 
-    The output looks similar to the following:
+The output looks similar to the following:
 
     ```
     ● kubelet.service - Kubernetes Kubelet Server
-   Loaded: loaded (/etc/systemd/system/kubelet.service; enabled; vendor preset: enabled)
-   Active: active (running) since Fri 2021-08-06 08:48:42 UTC; 2h 18min ago
+    Loaded: loaded (/etc/systemd/system/kubelet.service; enabled; vendor preset: enabled)
+    Active: active (running) since Fri 2021-08-06 08:48:42 UTC; 2h 18min ago
     Docs: https://kubernetes.io/docs/concepts/overview/components/#kubelet
     Main PID: 1053 (kubelet)
         Tasks: 17 (limit: 4701)
@@ -295,6 +296,7 @@ Inspect the system service:
             └─1053 /usr/bin/kubelet --config=/etc/kubernetes/kubelet.conf --logtostderr=true --image-pull-progress-deadline=5m
     ...
     ```
+
 Stop the kubelet:
 
     ```bash

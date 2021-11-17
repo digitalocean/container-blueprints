@@ -2,8 +2,8 @@
 # 
 # SSH Deploy Key to use by Flux CD
 resource "tls_private_key" "main" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
 }
 
 resource "github_repository_deploy_key" "main" {

@@ -20,13 +20,16 @@ This guide is about setting up an `Egress Gateway` to control and route traffic 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Table of Contents](#table-of-contents)
 - [Prerequisites](#prerequisites)
 - [Introducing Netmaker](#introducing-netmaker)
 - [Installing the Netmaker Server](#installing-the-netmaker-server)
   - [DigitalOcean Marketplace Guide](#digitalocean-marketplace-guide)
   - [Finishing the Netmaker Server Setup](#finishing-the-netmaker-server-setup)
-- [Exploring the Netmaker Server Web Interface](#exploring-the-netmaker-server-web-interface)
+- [Exploring the Netmaker Server Dashboard](#exploring-the-netmaker-server-dashboard)
+  - [Accessing the Netmaker Dashboard](#accessing-the-netmaker-dashboard)
+  - [Exploring the Networks Section](#exploring-the-networks-section)
+  - [Exploring the Access Keys Section](#exploring-the-access-keys-section)
+  - [Exploring the Nodes Section](#exploring-the-nodes-section)
 
 ## Prerequisites
 
@@ -219,6 +222,144 @@ netmaker-ui   /docker-entrypoint.sh            Up      0.0.0.0:8082->80/tcp,:::8
 
 Next, a quick walkthrough for the Netmaker administration web console is presented, to get you familiarized with the user interface, as well as some basic tasks, like: creating a private network, managing access keys and nodes inspection.
 
-## Exploring the Netmaker Server Web Interface
+## Exploring the Netmaker Server Dashboard
+
+In general, Netmaker is managed via a simple web interface that let's you perform administrative tasks like:
+
+- Managing networks, Egress Gateways, Nodes, etc.
+- Managing access keys for devices or nodes that need access to Netmaker resources.
+- Managing external clients, like: phones, tablets or laptops accessing Netmaker resources.
+- Internal DNS configuration and management.
+- Users and roles for accessing the web dashboard.
+
+### Accessing the Netmaker Dashboard
+
+To access the Netmaker server web interface or dashboard, you can use the following URL (make sure to replace the `<>` placeholders accordingly):
+
+```text
+https://dashboard.nm.<YOUR_NETMAKER_DROPLET_DASHED_PUBLIC_IP_HERE>.nip.io
+```
+
+Notes:
+
+- `YOUR_NETMAKER_DROPLET_DASHED_PUBLIC_IP_HERE` represents your Netmaker Droplet public IP having all dots replaced with the dash symbol: `-`. For example, if your droplet public IP is `209.97.179.143`, then the dashed version becomes: `209-97-179-143`.
+- Based on the above example, the dashboard URL becomes: `https://dashboard.nm.209-97-179-143.nip.io`.
+- Another way of finding the Netmaker dashboard URL is by SSH-ing as root to the Droplet, and then inspecting the `Caddyfile` from the home folder:
+
+    ```shell
+    cat Caddyfile
+    ```
+
+    The output looks similar to (notice the `# Dashboard` section):
+
+    ```json
+    {
+        # LetsEncrypt account
+        email test@gmail.com
+    }
+
+    # Dashboard
+    https://dashboard.nm.209-97-179-143.nip.io {
+        reverse_proxy http://127.0.0.1:8082
+    }
+
+    # API
+    https://api.nm.209-97-179-143.nip.io {
+        reverse_proxy http://127.0.0.1:8081
+    }
+
+    # gRPC
+    https://grpc.nm.209-97-179-143.nip.io {
+        reverse_proxy h2c://127.0.0.1:50051
+    }
+    ```
+
+When you log in for the first time, a pop-up window will appear asking you to set the administrator user credentials. Please go ahead and set those now:
+
+![Netmaker Server Create Admin](assets/images/netmaker_admin_create.png)
+
+Then, you will be asked to log in using the credentials set previously:
+
+![Netmaker Server Login](assets/images/netmaker_log_in.png)
+
+After successfully logging in, you will be presented with the main dashboard interface:
+
+![Netmaker Main Web Interface](assets/images/netmaker_main_dashboard.png)
+
+Next, you will discover each important section from the main dashboard that are relevant for this tutorial, like:
+
+- `Networks`: Lets you define and manage private networks.
+- `Access Keys`: Lets you manage access keys for various devices or nodes accessing private resources.
+- `Nodes`: Lets you inspect and manage nodes that are part of your private network.
+
+### Exploring the Networks Section
+
+The `Networks` feature that Netmaker provides, lets you define and manage private networks for seamlessly connecting various systems, like: Kubernetes clusters (e.g. `DOKS`), managed databases, virtual machines (e.g. Droplets) across different regions (or data centers), even across different cloud providers.
+
+From the Netmaker main dashboard page, you can access the `Networks` section by clicking the corresponding tile, as shown below:
+
+![Networks Tile](assets/images/netmaker_networks_tile.png)
+
+Next, you can define a new private network by clicking the `Create Network` blue button from the right side:
+
+![Netmaker Network Creation](assets/images/netmaker_create_network.png)
+
+Now, give it a name and give it an address range, making sure that it **doesn't overlap with existing `CIDRs`** for other resources in your DO account (like other DOKS clusters, for example). There's an autofill feature available as well, but please bear in mind the previous note. Then, click on the `Create` button from the bottom:
+
+![Netmaker Network Set Configuration](assets/images/netmaker_set_network_config.png)
+
+After completing the step, the new network should be present in the listing:
+
+![Networks Listing](assets/images/netmaker_networks_listing.png)
+
+Going further, you can click on it and fine tune if necessary. Usually the default values are just fine, but there might be some special cases when you need to touch the defaults:
+
+![Network Editing](assets/images/netmaker_network_edit.png)
+
+### Exploring the Access Keys Section
+
+The `Access Keys` feature that Netmaker provides, lets you define a set of keys which will then be used to allow access for other devices or nodes that needs to be part of your private network, and exchange data in a secure manner.
+
+From the Netmaker main dashboard page, you can navigate to the `Access Keys` section by clicking the corresponding tile, as shown below:
+
+![Access Keys Tile](assets/images/netmaker_access_keys_tile.png)
+
+Next, you need to select a network to create access keys for, by expanding the drop down list:
+
+![Access Keys Network Select](assets/images/netmaker_access_keys_select_network.png)
+
+In the next page, make sure that your desired network is selected, then click on the `Create Access Key` blue button down below:
+
+![Access Keys Create First Step](assets/images/netmaker_create_access_key.png)
+
+Next, give it a proper name and number of uses, then press `Create` button:
+
+![Access Keys Create Last Step](assets/images/netmaker_access_key_create_final.png)
+
+Finally, you will be presented with a pop-up window giving you the access key and token for your clients (or nodes), as well as some instructions for various OS-es:
+
+![Access Keys Instructions](assets/images/netmaker_access_keys_and_instructions.png)
+
+The above information can be accessed anytime, by navigating to the access keys page and clicking on the corresponding key in the list.
+
+### Exploring the Nodes Section
+
+The `Nodes` tile that Netmaker provides, lets you inspect the nodes that are part of each private network. You can also set other node(s) features, like `Egress` or `Ingress Gateway` functionality for example.
+
+From the Netmaker main dashboard page, you can navigate to the `Nodes` section by clicking the corresponding tile, as shown below:
+
+![Nodes Tile](assets/images/netmaker_nodes_tile.png)
+
+Next, you will be presented with a list of nodes, their name and corresponding network. Other details are shown, like `Egress` or `Ingress` functionality, as well as each node `IP` address, and if it's `Healthy` or not:
+
+![Nodes Listing](assets/images/netmaker_nodes_listing.png)
+
+Finally, if desired you can set advanced settings for each node, as shown below:
+
+![Node Advanced Settings](assets/images/netmaker_node_advanced_settings.png)
+
+**Important note:**
+
+**Please bear in mind that if changing one value in the node settings, you should do this for every node that's part of the respective network. Changes do not propagate automatically to other nodes !!!**
 
 TBD.

@@ -33,6 +33,8 @@ This guide is about setting up an `Egress Gateway` to control and route traffic 
 - [Creating an Egress Gateway for DOKS](#creating-an-egress-gateway-for-doks)
   - [Configuring Netmaker Server](#configuring-netmaker-server)
   - [Configuring DOKS](#configuring-doks)
+  - [Testing the DOKS Egress Setup](#testing-the-doks-egress-setup)
+- [Summary](#summary)
 
 ## Prerequisites
 

@@ -25,6 +25,9 @@ This guide is about setting up an `Egress Gateway` to control and route traffic 
 - [Installing the Netmaker Server](#installing-the-netmaker-server)
   - [DigitalOcean Marketplace Guide](#digitalocean-marketplace-guide)
   - [Finishing the Netmaker Server Setup](#finishing-the-netmaker-server-setup)
+- [Configuring a Floating IP for Netmaker](#configuring-a-floating-ip-for-netmaker)
+  - [Enabling a Floating IP for the Netmaker Droplet](#enabling-a-floating-ip-for-the-netmaker-droplet)
+  - [Configuring the Netmaker Server to use the Floating IP](#configuring-the-netmaker-server-to-use-the-floating-ip)
 - [Exploring the Netmaker Server Dashboard](#exploring-the-netmaker-server-dashboard)
   - [Accessing the Netmaker Dashboard](#accessing-the-netmaker-dashboard)
   - [Exploring the Networks Section](#exploring-the-networks-section)
@@ -35,10 +38,6 @@ This guide is about setting up an `Egress Gateway` to control and route traffic 
   - [Installing Netclient on DOKS Worker Nodes](#installing-netclient-on-doks-worker-nodes)
   - [Testing the DOKS Egress Setup](#testing-the-doks-egress-setup)
   - [Checking WireGuard Configuration](#checking-wireguard-configuration)
-- [Configuring a Floating IP for your Egress Gateway](#configuring-a-floating-ip-for-your-egress-gateway)
-  - [Enabling a Floating IP for the Netmaker Droplet](#enabling-a-floating-ip-for-the-netmaker-droplet)
-  - [Configuring the Netmaker Server to use the Floating IP](#configuring-the-netmaker-server-to-use-the-floating-ip)
-  - [Configuring Nodes to Connect to the Netmaker Server Floating IP](#configuring-nodes-to-connect-to-the-netmaker-server-floating-ip)
 - [Summary](#summary)
 
 ## Prerequisites
@@ -205,7 +204,7 @@ Netmaker setup is now complete. You are ready to begin using Netmaker.
 Visit dashboard.nm.209-97-179-143.nip.io to log in
 ```
 
-At the end, you will be presented with the Netmaker server dashboard link. You can also check the core components and their status, via `docker-compose`:
+At the end, you will be presented with the Netmaker server dashboard link. The server itself is deployed as a set of docker containers, managed via `docker-compose`. You can check server components status, via `docker-compose`:
 
 ```shell
 docker-compose ps
@@ -222,11 +221,134 @@ netmaker      ./netmaker                       Up      0.0.0.0:50051->50051/tcp 
 netmaker-ui   /docker-entrypoint.sh            Up      0.0.0.0:8082->80/tcp,:::8082->80/tcp
 ```
 
+Next, you will learn how to enable a `Floating IP` address for your Egress Gateway machine, to ensure a `static` or `fixed` public `IP` is always available.
+
+## Configuring a Floating IP for Netmaker
+
+Another great feature (offered by `DigitalOcean`) that you can benefit from, is to enable [Floating IPs](https://docs.digitalocean.com/products/networking/floating-ips) for your `Egress Gateway Droplet`. By doing this, you can ensure a `fixed` (or a `static`) public IP for the respective machine (or Droplet), which never changes. By default, the IP assigned to your Netmaker Droplet is ephemeral because it's a dynamic IP. It means, that whenever you recreate the machine, a new IP is assigned, thus your private network resources won't be able to reconnect. That's not good!
+
+This is a two step process:
+
+1. Enabling a `Floating IP` for the `Netmaker` server droplet.
+2. Reconfiguring the `Netmaker` server to make use of the `Floating IP` address.
+
+Ideally, you would want to configure the `Floating IP` address after installing the Netmaker server, but before defining new networks. This way, nodes will always use the `Floating IP` address to connect to the Netmaker server.
+
+### Enabling a Floating IP for the Netmaker Droplet
+
+From your `DigitalOcean` account web panel, navigate to [Networking -> Floating IPs](https://cloud.digitalocean.com/networking/floating_ips). Then, select your `Netmaker` server droplet and click the `Enable now` link for the `Floating IP` feature.
+
+Alternatively, you can also accomplish the same thing via the CLI. First, list the available droplets, including their `ID` and `Name`:
+
+```shell
+doctl compute droplet list --format ID,Name
+```
+
+The output looks similar to (take a note of the droplet `ID` that you need to assign a `Floating IP` to):
+
+```text
+ID           Name
+278664180    netmaker-ubuntu-s-1vcpu-1gb-lon1-01
+281956404    basicnp-u2orr
+281956406    basicnp-u2orj
+```
+
+Finally, create a `Floating IP` for the `droplet` in question (in this example `278664180` was picked which corresponds to `netmaker-ubuntu-s-1vcpu-1gb-lon1-01`):
+
+```shell
+doctl compute floating-ip create --droplet-id 278664180
+```
+
+The output looks similar to (notice the `IP` column value showing the assigned `Floating IP` address):
+
+```text
+IP                Region    Droplet ID    Droplet Name
+159.65.210.139    lon1      278664180     netmaker-ubuntu-s-1vcpu-1gb-lon1-01
+```
+
+Wait a little bit until a `Floating IP` gets assigned to your Netmaker server droplet, and then make a note of it before proceeding to the next section.
+
+### Configuring the Netmaker Server to use the Floating IP
+
+When using the DigitalOcean Marketplace to provision the Netmaker server, a set of docker containers get deployed and managed by docker compose. Application (or server) input parameters are controlled via the `docker-compose.yml` file. To be able to use the Floating IP address, you need to replace every instance of the dynamic IP inside the `docker-compose.yaml` file that was assigned to the Netmaker droplet initially.
+
+For your convenience there's a script provided in this repository that automates all the required steps. The scrips assumes that the Netmaker droplet already has a Floating IP assigned. What the scripts does is:
+
+1. Creates a backup first, for all the configuration files that it is going to change (`docker-compose.yml`, `Caddyfile`, `/etc/netplan/50-cloud-init.yaml`).
+2. Sets the default gateway for the droplet to point to the anchor IP gateway. Then, makes the configuration persistent across machine reboots (works on `Ubuntu` or other `Debian` derivates that make use of [Netplan](https://netplan.io)).
+3. Re-configures the Netmaker server configuration files to use the new `Floating IP` address.
+4. Restarts the Netmaker server processes to apply the changes.
+
+Please follow below steps to tell the Netmaker server to use the Floating IP address:
+
+1. First, SSH into the Netmaker server machine:
+
+    ```shell
+    ssh root@<YOUR_NETMAKER_DROPLET_FLOATING_IP_HERE>
+    ```
+
+2. Then, fetch the script provided in this repository:
+
+    ```shell
+    curl https://raw.githubusercontent.com/digitalocean/container-blueprints/main/netmaker-egress-gateway/assets/scripts/netmaker_floating_ip_config.sh > netmaker_floating_ip_config.sh 
+    ```
+
+3. Now, run the script as `root` (you can also run it via `sudo`, which is more recommended in general):
+
+    ```shell
+    bash netmaker_floating_ip_config.sh
+    ```
+
+    The output looks similar to:
+
+    ```text
+    [INFO] Checking if command 'cp' is available... OK.
+    [INFO] Checking if command 'grep' is available... OK.
+    [INFO] Checking if command 'ip' is available... OK.
+    [INFO] Checking if command 'docker-compose' is available... OK.
+    [INFO] Checking if command 'netplan' is available... OK.
+    [INFO] Checking if command 'sed' is available... OK.
+
+    [INFO] Backing up /etc/netplan/50-cloud-init.yaml to /etc/netplan/50-cloud-init.yaml.bk
+    [INFO] Setting persistent settings for anchor IP Gateway address: 10.16.0.1...
+    [INFO] Backing up Netmaker server Caddy file to: /root/Caddyfile.bk...
+    [INFO] Setting up Netmaker server Caddy configuration file to use Floating IP address: 159.65.210.139...
+    [INFO] Backing up Netmaker server docker compose file to: /root/docker-compose.yml.bk...
+    [INFO] Setting up Netmaker server docker-compose file to use Floating IP address: 159.65.210.139...
+    [INFO] Restarting Netmaker server for changes to take effect...
+    [INFO] Stopping Netmaker server...
+    Stopping netmaker-ui ... done
+    Stopping coredns     ... done
+    Stopping netmaker    ... done
+    Stopping caddy       ... done
+    Removing netmaker-ui ... done
+    Removing coredns     ... done
+    Removing netmaker    ... done
+    Removing caddy       ... done
+    Removing network root_default
+    [INFO] Starting Netmaker server...
+    Creating network "root_default" with the default driver
+    Creating caddy    ... done
+    Creating netmaker ... done
+    Creating netmaker-ui ... done
+    Creating coredns     ... done
+
+    #########################################################################################
+    #                                                                                       #
+    #                                                                                       #
+    # To access the dashboard, please visit: https://dashboard.nm.159-65-210-139.nip.io     #
+    #                                                                                       #
+    #                                                                                       #
+    #########################################################################################
+    ```
+
+At this point the Netmaker server is configured to use a `Floating IP` address. From now on, you can use the floating IP to access the web console, as well as your future private network nodes.
+
 Next, a quick walkthrough for the Netmaker administration web console is presented, to get you familiarized with the user interface, as well as some basic tasks, like: creating a private network, managing access keys and nodes inspection.
 
 ## Exploring the Netmaker Server Dashboard
 
-In general, Netmaker is managed via a simple web interface that let's you perform administrative tasks like:
+In general, Netmaker is managed via a simple web interface allowing you to perform administrative tasks like:
 
 - Managing networks, Egress Gateways, Nodes, etc.
 - Managing access keys for devices or nodes that need access to Netmaker resources.
@@ -239,13 +361,13 @@ In general, Netmaker is managed via a simple web interface that let's you perfor
 To access the Netmaker server web interface or dashboard, you can use the following URL (make sure to replace the `<>` placeholders accordingly):
 
 ```text
-https://dashboard.nm.<YOUR_NETMAKER_DROPLET_DASHED_PUBLIC_IP_HERE>.nip.io
+https://dashboard.nm.<YOUR_NETMAKER_DROPLET_DASHED_NOTATION_FLOATING_IP_HERE>.nip.io
 ```
 
 Notes:
 
-- `YOUR_NETMAKER_DROPLET_DASHED_PUBLIC_IP_HERE` represents your Netmaker Droplet public IP having all dots replaced with the dash symbol: `-`. For example, if your droplet public IP is `209.97.179.143`, then the dashed version becomes: `209-97-179-143`.
-- Based on the above example, the dashboard URL becomes: `https://dashboard.nm.209-97-179-143.nip.io`.
+- `YOUR_NETMAKER_DROPLET_DASHED_NOTATION_FLOATING_IP_HERE` represents your Netmaker Droplet Floating IP having all dots replaced with the dash symbol: `-`. For example, if your droplet Floating IP is `159.65.210.139`, then the dashed version becomes: `159-65-210-139`.
+- Based on the above example, the dashboard URL becomes: `https://dashboard.nm.159-65-210-139.nip.io`.
 - Another way of finding the Netmaker dashboard URL is by SSH-ing as root to the Droplet, and then inspecting the `Caddyfile` from the home folder:
 
     ```shell
@@ -256,22 +378,22 @@ Notes:
 
     ```text
     {
-        # LetsEncrypt account
-        email test@gmail.com
+    # LetsEncrypt account
+    email fake@email.com
     }
 
     # Dashboard
-    https://dashboard.nm.209-97-179-143.nip.io {
+    https://dashboard.nm.159-65-210-139.nip.io {
         reverse_proxy http://127.0.0.1:8082
     }
 
     # API
-    https://api.nm.209-97-179-143.nip.io {
+    https://api.nm.159-65-210-139.nip.io {
         reverse_proxy http://127.0.0.1:8081
     }
 
     # gRPC
-    https://grpc.nm.209-97-179-143.nip.io {
+    https://grpc.nm.159-65-210-139.nip.io {
         reverse_proxy h2c://127.0.0.1:50051
     }
     ```
@@ -361,7 +483,7 @@ Suppose that you need to use an external service like a legacy database, for exa
 
 You can egress from DOKS cluster nodes, but it's not practical because nodes are volatile, hence their IPs. It means that on the other end (meaning the database service), you need to change firewall rules again and again to allow the new IPs. This is the most frequent example where an Egress Gateway becomes useful, and where Netmaker plays an important role.
 
-What you usually do is, have a dedicated machine (or Droplet) where Netmaker runs and has a fixed (or) static IP assigned. Then, you deploy `Netclients` to your DOKS cluster as a `DaemonSet`, so that the cluster nodes become part of your private network that you set up via Netmaker. Going, further the Netmaker server becomes the Egress Gateway, thus allowing outbound traffic to the external service (the database in this example). Finally, the external service (database) firewall is configured to allow inbound traffic from the Netmaker Egress Gateway IP.
+What you usually do is, have a dedicated machine (or Droplet) where Netmaker runs and has a fixed (or static) IP assigned. Then, you deploy `Netclients` to your DOKS cluster as a `DaemonSet`, so that the cluster nodes become part of your private network that you set up via Netmaker. Going, further the Netmaker server becomes the Egress Gateway, thus allowing outbound traffic to the external service (the database in this example). Finally, the external service (database) firewall is configured to allow inbound traffic from the Netmaker Egress Gateway IP.
 
 Below is a diagram, showing the main setup for egressing DOKS cluster traffic to an external database:
 
@@ -369,7 +491,7 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
 
 **Important things to remember:**
 
-- By default the Netmaker server (or the Egress Gateway in our case) will route traffic via its public interface. This is a valid use case in general because usually the Netmaker server should not be tied to a specific VPC or any network of any cloud provider. Remember that Netmaker main purpose is to create overlay networks - this is very important to remember and understand. As an example, the Netmaker server can be installed and run from your home network if desired, it just needs to be accessible via its public IP address. Then, it's just a matter of creating `tunnels` from your home private network to your friend private network, or to whatever private datacenter you want to have access to in a secure manner.
+- By default the Netmaker server (or the Egress Gateway in our case) will route traffic via its public interface. This is a valid use case in general because usually the Netmaker server should not be tied to a specific VPC or any network of any cloud provider. Remember that Netmaker main purpose is to create overlay networks - this is very important to remember and understand. As an example, the Netmaker server can be installed and run from your home network if desired, it just needs to be accessible via its public (or floating) IP address. Then, it's just a matter of creating `tunnels` from your home private network to your friend private network, or to whatever private datacenter you want to have access to in a secure manner.
 - From a security point of view everything is encrypted, nothing goes out in the wild using clear text. More than that, `WireGuard` (the power horse running behind Netmaker) will not allow traffic from other nodes that are not part of the private network that you configured using Netmaker. Packets coming from unknown IPs are dropped. The downside is that in order for this to work, the nodes must have static IPs so that WireGuard can build the internal list of allowable (or known) IPs.
 
 Going further, there are two steps involved:
@@ -465,7 +587,7 @@ After completing all the above steps, a new `DaemonSet` is created in your DOKS 
 
 **Hint:**
 
-You may wonder how nodes know to contact the main Netmaker server (like public IP address for example). This information is stored in the access token that you generated for your network earlier.
+You may wonder how nodes know to contact the main Netmaker server (like public or floating IP address for example). This information is stored in the access token that you generated for your network earlier.
 
 Now, please go ahead and inspect the new Kubernetes resources created in the `netmaker` namespace, as well as their state:
 
@@ -523,7 +645,7 @@ Next, you will test the egress setup by deploying the `curl-test` pod in your cl
 
 ### Testing the DOKS Egress Setup
 
-To test your egress setup, you need to check if all the `requests` originating from your `DOKS` cluster travel via a single node - the `Egress Gateway`. The simplest way to test, is by making a `curl` request to [ifconfig.me/ip](https://ifconfig.me/ip), and see if the response contains your `Egress Gateway public IP`.
+To test your egress setup, you need to check if all the `requests` originating from your `DOKS` cluster travel via a single node - the `Egress Gateway`. The simplest way to test, is by making a `curl` request to [ifconfig.me/ip](https://ifconfig.me/ip), and see if the response contains your `Egress Gateway Floating IP` address.
 
 First, you need to create the `curl-test` pod in your `DOKS` cluster (the `default` namespace is used):
 
@@ -544,34 +666,19 @@ NAME       READY   STATUS    RESTARTS   AGE
 curl-test   1/1     Running   0          7s
 ```
 
-Then, perform a `HTTP` request to [ifconfig.me/ip](https://ifconfig.me/ip), from the `curl-test` pod:
+Then, perform a `HTTP` request to [ifconfig.me](https://ifconfig.me), from the `curl-test` pod:
 
 ```shell
-kubectl exec -it curl-test -- curl https://ifconfig.me/ip
+kubectl exec -it curl-test -- curl https://ifconfig.me
 ```
 
 The output looks similar to:
 
 ```text
-209.97.179.143
+159.65.210.139
 ```
 
-You can compare the above with the Netmaker Egress Gateway Droplet public IP, as shown below:
-
-```shell
-doctl compute droplet list --format Name,PublicIPv4
-```
-
-The output looks similar to (notice the `netmaker-ubuntu-s-1vcpu-1gb-lon1-01` droplet having the same public IP `209.97.179.143`):
-
-```text
-Name                                   Public IPv4
-basicnp-uan1e                          167.172.62.197
-basicnp-uan1g                          167.172.53.77
-netmaker-ubuntu-s-1vcpu-1gb-lon1-01    209.97.179.143
-```
-
-If the results are the similar to the above, then you configured the `Egress Gateway` successfully.
+The resulting IP address that gets printed should be the floating IP address that you assigned to your Netmaker droplet. If so, then you configured the `Egress Gateway` successfully.
 
 ### Checking WireGuard Configuration
 
@@ -612,7 +719,7 @@ Checking WireGuard configuration can be accomplished by invoking the `wg` utilit
     listening port: 51821
 
     peer: CA4reOG2iC3v2Knik14u4wLKmEk85RmMmnWSgZemmzc=
-    endpoint: 157.245.29.102:51821
+    endpoint: 159.65.210.139:51821
     allowed ips: 10.101.56.1/32
     latest handshake: 1 minute ago
     transfer: 1.20 KiB received, 4.74 KiB sent
@@ -648,7 +755,7 @@ Checking WireGuard configuration can be accomplished by invoking the `wg` utilit
     persistent keepalive: every 20 seconds
 
     peer: CA4reOG2iC3v2Knik14u4wLKmEk85RmMmnWSgZemmzc=
-    endpoint: 157.245.29.102:51821
+    endpoint: 159.65.210.139:51821
     allowed ips: 10.101.56.1/32
     latest handshake: 58 seconds ago
     transfer: 1.92 KiB received, 7.65 KiB sent
@@ -673,11 +780,11 @@ basicnp-u2orj   Ready    <none>   29h   v1.21.5   10.114.0.3  ...
 basicnp-u2orr   Ready    <none>   29h   v1.21.5   10.114.0.4  ...
 ```
 
-As you can see in the above output, each node is peering with the other nodes from your DOKS cluster via the private (internal) network. A peer connection is also established with the Netmaker server over its public IP address. You may wonder why DOKS internal nodes peer with the Netmaker server via the public interface. Well, this is by design - remember that the Netmaker server is supposed to be publicly accessible so that you can connect any resources from any network no matter where is located, as long as it has access to the internet. You need not to worry about your traffic being publicly exposed because everything goes encrypted via the WireGuard tunnel.
+As you can see in the above output, each node is peering with the other nodes from your DOKS cluster via the private (internal) network. A peer connection is also established with the Netmaker server over its floating IP address. You may wonder why DOKS internal nodes peer with the Netmaker server via the public interface. Well, this is by design - remember that the Netmaker server is supposed to be publicly accessible so that you can connect any resources from any network no matter where is located, as long as it has access to the internet. You need not to worry about your traffic being publicly exposed because everything goes encrypted via the WireGuard tunnel.
 
 **Note:**
 
-If desired, you can enforce all traffic to go via the internal network (or VPC) where your Netmaker server is deployed. This aspect will be covered in a dedicated section of this tutorial.
+If desired, you can enforce all traffic to go via the internal network (or VPC) where your Netmaker server is deployed. This aspect will be covered in a dedicated guide for this tutorial.
 
 You can check what other options are available for the `wg` command by inspecting the `help` page:
 
@@ -702,58 +809,6 @@ Available subcommands:
   pubkey: Reads a private key from stdin and writes a public key to stdout
 You may pass `--help' to any of these subcommands to view usage.
 ```
-
-Next, you will learn how to enable a Floating IP for your Egress Gateway machine, to ensure a `static` or `fixed` public `IP` is always available.
-
-## Configuring a Floating IP for your Egress Gateway
-
-Another great feature (offered by `DigitalOcean`) that you can benefit from, is to enable [Floating IPs](https://docs.digitalocean.com/products/networking/floating-ips) for your `Egress Gateway Droplet`. By doing this, you can ensure a `fixed` (or a `static`) public IP for the respective machine (or Droplet), which never changes. By default, the IP assigned to your Netmaker Droplet is ephemeral because it's a dynamic IP. It means, that whenever you recreate the machine, a new IP is assigned, thus rendering the external service (the database in our example) firewall rule invalid. That's not good!
-
-This is a three step process:
-
-1. Enabling a `Floating IP` for the `Netmaker` server droplet.
-2. Reconfiguring the `Netmaker` server to make use of the `Floating IP` address.
-3. Reconfigure nodes to use and connect to the new `Floating IP` address of the Netmaker server.
-
-Although this is not ideal in practice (because it implies downtime for your interconnected resources), it's a good example to learn more about Netmaker inner workings. Ideally, you would configure the Floating IP address before installing the Netmaker server, creating WireGuard networks, and then peering resources. This way, the third step will be avoided (meaning, re-connecting or re-joining nodes).
-
-### Enabling a Floating IP for the Netmaker Droplet
-
-From your `DigitalOcean` account web panel, navigate to [Networking -> Floating IPs](https://cloud.digitalocean.com/networking/floating_ips). Then, select your `Netmaker` server droplet, and click the `Enable now` link for the `Floating IP` feature.
-
-Alternatively, you can also accomplish the same thing via the CLI. First, list the available droplets, including their `ID` and `Name`:
-
-```shell
-doctl compute droplet list --format ID,Name
-```
-
-The output looks similar to (take a note of the droplet `ID` that you need to assign a `Floating IP` to):
-
-```text
-ID           Name
-278664180    netmaker-ubuntu-s-1vcpu-1gb-lon1-01
-281956404    basicnp-u2orr
-281956406    basicnp-u2orj
-```
-
-Finally, create a `Floating IP` for the `droplet` in question (in this example `278664180` was picked which corresponds to `netmaker-ubuntu-s-1vcpu-1gb-lon1-01`):
-
-```shell
-doctl compute floating-ip create --droplet-id 278664180
-```
-
-The output looks similar to (notice the `IP` column value showing the assigned `Floating IP` address):
-
-```text
-IP                Region    Droplet ID    Droplet Name
-139.59.205.253    lon1      278664180     netmaker-ubuntu-s-1vcpu-1gb-lon1-01
-```
-
-Wait a little bit until a `Floating IP` gets assigned to your Netmaker server droplet, and then make a note of it before proceeding to the next section.
-
-### Configuring the Netmaker Server to use the Floating IP
-
-### Configuring Nodes to Connect to the Netmaker Server Floating IP
 
 ## Summary
 

@@ -412,21 +412,13 @@ Next, you will discover each important section from the main dashboard that is r
 
 ### Exploring the Networks Section
 
-The `Networks` feature that Netmaker provides, lets you define and manage private networks for seamlessly connecting various systems, like: Kubernetes clusters (e.g. `DOKS`), managed databases, virtual machines (e.g. Droplets) across different regions (or data centers), even across different cloud providers.
+The `Networks` feature that Netmaker provides lets you define and manage private networks for seamlessly connecting various systems, like: Kubernetes clusters (e.g. `DOKS`), managed databases, virtual machines (e.g. Droplets) across different regions (or data centers), even across different cloud providers.
 
-From the Netmaker main dashboard page, you can access the `Networks` section by clicking the corresponding tile, as shown below:
+From the Netmaker main dashboard page you can access the `Networks` section by clicking the corresponding tile, as shown below:
 
 ![Networks Tile](assets/images/netmaker_networks_tile.png)
 
-Next, you can define a new private network by clicking the `Create Network` blue button from the right side. Going further, give it a name and an address range, making sure that it **doesn't overlap with existing `CIDRs`** for other resources in your DO account (like other DOKS clusters, for example). There's an autofill feature available as well, but please bear in mind the previous note. Then, click on the `Create` button from the bottom:
-
-![Netmaker Network Set Configuration](assets/images/netmaker_set_network_config.png)
-
-After completing previous steps, the newly configured network should be present in the available networks list:
-
-![Networks Listing](assets/images/netmaker_networks_listing.png)
-
-Going further, you can click on it and fine tune if necessary. Usually the default values are just fine, but there might be some special cases when you need to touch the defaults.
+Here, you can define and manage private networks, as well as change advanced settings for each network. For more information and the available options, please consult the [Netmaker Networks](https://netmaker.readthedocs.io/en/master/ui-reference.html#networks) page from the official documentation.
 
 ### Exploring the Access Keys Section
 
@@ -436,19 +428,9 @@ From the Netmaker main dashboard page you can navigate to the `Access Keys` sect
 
 ![Access Keys Tile](assets/images/netmaker_access_keys_tile.png)
 
-Next, you need to select a network to create access keys for, by expanding the drop down list:
+This section allows you to create and manage the access keys, as well as giving you instructions on how to deploy `Netclients` for various operating systems. You cannot change the access keys or any information from this section once generated, but you can always get back here and fetch the access keys value, when needed.
 
-![Access Keys Network Select](assets/images/netmaker_access_keys_select_network.png)
-
-In the next page, make sure that your desired network is selected, then click on the `Create Access Key` blue button down down below. Next, give it a proper name and number of uses (dictates how many nodes can use the same key). Then, press `Create` button:
-
-![Access Keys Create Last Step](assets/images/netmaker_access_key_create_final.png)
-
-Finally, you will be presented with a pop-up window giving you the access key and token for your clients (or nodes), as well as some instructions for various OS-es:
-
-![Access Keys Instructions](assets/images/netmaker_access_keys_and_instructions.png)
-
-The above information can be accessed anytime, by navigating to the access keys page and clicking on the corresponding key in the list.
+For more information about access keys and the available options, please consult the [Netmaker Access Keys](https://netmaker.readthedocs.io/en/master/getting-started.html#create-a-key) page from the official documentation.
 
 ### Exploring the Nodes Section
 
@@ -458,7 +440,7 @@ From the Netmaker main dashboard page, you can navigate to the `Nodes` section b
 
 ![Nodes Tile](assets/images/netmaker_nodes_tile.png)
 
-Next, you will be presented with a list of nodes, giving you details about:
+Here, for every node that you have you will get details like:
 
 - `Node name` (1).
 - `Private IP` address of the node (2).
@@ -469,9 +451,7 @@ Next, you will be presented with a list of nodes, giving you details about:
 
 ![Nodes Listing](assets/images/netmaker_nodes_listing.png)
 
-Finally, if desired you can set advanced settings for each node by clicking on its name:
-
-![Node Advanced Settings](assets/images/netmaker_node_advanced_settings.png)
+Finally, if desired you can change the advanced settings for each node by clicking on its name. For more information about nodes page and available options, please consult the [Netmaker Nodes](https://netmaker.readthedocs.io/en/master/ui-reference.html#nodes) page from the official documentation.
 
 **Important note:**
 
@@ -491,7 +471,7 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
 
 **Important things to remember:**
 
-- By default the Netmaker server (or the Egress Gateway in our case) will route traffic via its public interface. This is a valid use case in general because usually the Netmaker server should not be tied to a specific VPC or any network of any cloud provider. Remember that Netmaker main purpose is to create overlay networks - this is very important to remember and understand. As an example, the Netmaker server can be installed and run from your home network if desired, it just needs to be accessible via its public (or floating) IP address. Then, it's just a matter of creating `tunnels` from your home private network to your friend private network, or to whatever private datacenter you want to have access to in a secure manner.
+- By default the Netmaker server (or the Egress Gateway in this case) will route traffic via its public interface. This is a valid use case in general because usually the Netmaker server should not be tied to a specific VPC or any network of any cloud provider. Remember that Netmaker main purpose is to create overlay networks - this is very important to remember and understand. As an example, the Netmaker server can be installed and run from your home network if desired, it just needs to be accessible via its public (or floating) IP address. Then, it's just a matter of creating `tunnels` from your home private network to your friend private network, or to whatever private datacenter you want to have access to in a secure manner.
 - From a security point of view everything is encrypted, nothing goes out in the wild using clear text. More than that, `WireGuard` (the power horse running behind Netmaker) will not allow traffic from other nodes that are not part of the private network that you configured using Netmaker. Packets coming from unknown IPs are dropped. The downside is that in order for this to work, the nodes must have static IPs so that WireGuard can build the internal list of allowable (or known) IPs.
 
 Going further, there are two steps involved:
@@ -525,6 +505,10 @@ Please follow below steps to complete this section:
     Then, in the interface box, type `eth0` and click on the `Create` button. Below picture shows the details:
 
     ![Egress Configuration Dialog](assets/images/netmaker_egress_gw_configuration_dialog.png)
+
+    **Note:**
+
+    The above list of IP ranges allows you to egress to any resource on the public internet. In general, it's best practice to limit the range and allow nodes to egress only to specific ranges (like an external database for example).
 6. Now, you need to create an access key. Please navigate to the menu on the left, and click the `Access Keys` button. In the next dialog, give the access key a name and a number of uses (`100` is a good start). Then, click on the `Create` button:
 
     ![Create Access Keys](assets/images/netmaker_access_key_create_final.png)
@@ -540,7 +524,7 @@ At this point the Netmaker server side configuration is done. Next, you need to 
 
 **Notes:**
 
-- Currently, `Netclient` is not available as a `userspace` application for `DOKS`, hence the `WireGuard Controller` is needed for now, until `Gravitl` finds a better solution to solve some incompatibilities related to the Debian Linux OS used for the DOKS nodes.
+- Currently, `Netclient` is not available as a `userspace` application for `DOKS`, hence the `WireGuard Controller` is needed until `Gravitl` finds a better solution to solve some incompatibilities related to the Debian Linux OS used for the DOKS nodes.
 - The access token is just a one-time token used by `Netclient` initially. Afterwards, it creates its own password internally to authenticate with the main Netmaker server.
 
 The next part of this section assumes that you already have a `DOKS` cluster up and running, and that `kubectl` is already configured to offer access to the cluster.
@@ -633,13 +617,13 @@ Finally, open the Netmaker server dashboard and navigate to the `Nodes` page. Yo
 
 Looking at the above, you can also notice that the main Netmaker server is part of your private network, and that it's acting as an Egress Gateway (denoted by the green pass mark in the egress column).
 
-**Hint:**
+**Notes:**
 
-It may happen for some  `Netclients` to not succeed in joining your private network. What you can do in this case is to hit the `Sync` button on the top right corner:
+- It may happen for some  `Netclients` to not succeed in joining your private network. What you can do in this case is click the `Sync` button on the top right corner:
 
 ![Healthy](assets/images/doks_network_nodes_sync.png)
 
-If the above still doesn't solve this issue, you can ultimately kill the respective pods. The DaemonSet will spawn fresh ones, and the join process should start again (nodes communicate with master node, meaning the Netmaker server, via GRPC calls).
+- If the sync operation still doesn't solve this issue, you can ultimately kill the respective pods. The DaemonSet will spawn fresh ones, and the join process should start again (nodes communicate with master node, meaning the Netmaker server via GRPC calls).
 
 Next, you will test the egress setup by deploying the `curl-test` pod in your cluster. Then, you will make a request from the `curl-test` pod to [ifconfig.me](https://ifconfig.me), to see if it's the `Egress Gateway IP` that your DOKS cluster is using to connect to the outside world.
 
@@ -816,5 +800,6 @@ In this tutorial you learned how to use Netmaker to define and manage private ne
 
 Other interesting and useful topics to read about what Netmaker can do for you:
 
+- The official [documentation](https://netmaker.readthedocs.io/en/master/index.html) page for Netmaker.
 - [Multi-Cluster Networking with Kubernetes](https://itnext.io/multi-cluster-kubernetes-networking-with-netmaker-bfa4e22eb2fb).
 - [Creating VPNs using Netmaker and Wireguard](https://dev.to/afeiszli/how-to-create-four-types-of-vpns-quickly-with-wireguardr-and-netmaker-1ibe).

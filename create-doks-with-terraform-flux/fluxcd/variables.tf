@@ -1,4 +1,10 @@
 # ========================== GITHUB ============================
+variable "github_ssh_pub_key" {
+  description = "GitHub SSH public key"
+  type        = string
+  default     = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg="
+}
+
 variable "github_user" {
   description = "GitHub owner"
   type        = string
@@ -27,34 +33,7 @@ variable "git_repository_sync_path" {
 }
 
 # ========================== DOKS ============================
-variable "do_api_token" {
-  description = "DigitalOcean API token"
-  type        = string
-  sensitive   = true
-}
-
 variable "doks_cluster_name" {
   description = "DOKS cluster name"
-  type        = string
-}
-
-variable "doks_cluster_region" {
-  description = "DOKS cluster region"
-  type        = string
-}
-
-variable "doks_cluster_version" {
-  description = "Kubernetes version provided by DOKS"
-  type        = string
-  default     = "1.21.9-do.0" # Grab the latest version slug from "doctl kubernetes options versions"
-}
-
-variable "doks_cluster_pool_size" {
-  description = "DOKS cluster node pool size"
-  type        = string
-}
-
-variable "doks_cluster_pool_node_count" {
-  description = "DOKS cluster worker nodes count"
-  type        = number
+  type = string
 }

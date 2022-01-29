@@ -4,15 +4,6 @@ data "github_repository" "main" {
 }
 # ==============================================================
 
-# ========================== DOKS ==============================
-data "digitalocean_kubernetes_cluster" "primary" {
-  name = var.doks_cluster_name
-  depends_on = [
-    digitalocean_kubernetes_cluster.primary
-  ]
-}
-# ===============================================================
-
 # =========================== FLUX CD ===========================
 data "flux_install" "main" {
   target_path = var.git_repository_sync_path

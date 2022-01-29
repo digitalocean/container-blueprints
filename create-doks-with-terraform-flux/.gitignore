@@ -35,3 +35,6 @@ terraform.rc
 
 .terraform.lock*
 .DS_Store
+
+backend.tf
+*.out

@@ -31,8 +31,6 @@ provider "digitalocean" {
   token = var.do_api_token
 }
 
-provider "flux" {}
-
 provider "kubectl" {
   host  = digitalocean_kubernetes_cluster.primary.endpoint
   token = digitalocean_kubernetes_cluster.primary.kube_config[0].token

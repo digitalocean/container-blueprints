@@ -125,7 +125,12 @@ Finnally, we need to setup the trusted sources for the MySQL, steps to follow:
 
     **Note:**
 
-    For more details please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/).
+    - 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72: represents the database id
+    - c278b4a3-19f0-4de6-b1b2-6d90d94faa3b: represents the kubernetes id
+
+**Note:**
+
+For more details please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
 
 ## Deploy WordPress
 

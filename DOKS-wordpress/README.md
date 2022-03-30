@@ -68,8 +68,12 @@ By default, WordPress Helm chart installs MariaDB on a separate pod inside the c
 First, you need to create the MySQL managed database:
 
 ```console
-doctl databases create wordpress-mysql --engine mysql --region nyc1
+doctl databases create wordpress-mysql --engine mysql --region nyc1 --num-nodes 2 --size db-s-2vcpu-4gb
 ```
+
+**Note:**
+
+The example from this tutorial is using one master node and one slave node, 2cpu/4gb (`$100 monthly billing`). For a list of available sizes, visit: <https://docs.digitalocean.com/reference/api/api-reference/#tag/Databases>.
 
 The output looks similar to the following (the `STATE` column should display `online`):
 

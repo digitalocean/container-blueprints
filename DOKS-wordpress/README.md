@@ -24,6 +24,7 @@ You will be using an external MySQL server in order to abstract the database com
       - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
       - [Installing Cert-Manager](#installing-cert-manager)
       - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
+    - [Enable WordPress metrics](#enable-wordpress-metrics)
     - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
     - [Upgrading WordPress](#upgrading-wordpress)
   - [Conclusion](#conclusion)
@@ -179,6 +180,10 @@ persistence:
   accessModes: ["ReadWriteOnce"]
   size: 5Gi
 
+# Prometheus Exporter / Metrics configuration
+metrics:
+  enabled: false
+
 # Level of auto-updates to allow. Allowed values: major, minor or none.
 wordpressAutoUpdateLevel: minor
 
@@ -325,7 +330,7 @@ cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300
 
 - For more details about Nginx Ingress Controller and Cert-Manager, please visit Starter Kit chapter - [How to Configure Ingress using Nginx](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/blob/main/03-setup-ingress-controller/nginx.md).
 
-- An alternative way to install[ NGINX Ingress Controller](https://marketplace.digitalocean.com/apps/nginx-ingress-controller) and [Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) is via the DigitalOcean 1-click apps platform.
+- An alternative way to install[NGINX Ingress Controller](https://marketplace.digitalocean.com/apps/nginx-ingress-controller) and [Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) is via the DigitalOcean 1-click apps platform.
 
 #### Configuring Production Ready TLS Certificates for WordPress
 
@@ -405,9 +410,62 @@ wordpress.local-tls   True    wordpress.local-tls   24h
 
 Now, you can access the WordPress using the domain configured earlier.
 
+### Enable WordPress metrics
+
+In this section, you will learn how to enable the WordPress metrics for monitoring your cluster.
+
+First, open the YAML file `(values.yml)` created earlier and enable the metrics, like in the below example:
+
+```yaml
+# Prometheus Exporter / Metrics configuration
+metrics:
+  enabled: true
+```
+
+Apply the change via `helm`:
+
+```console
+helm upgrade wordpress bitnami/wordpress \
+    --create-namespace \
+    --namespace wordpress \
+    --version 13.1.4 \
+    --timeout 10m0s \
+    --values values.yml
+```
+
+Next, please perform a `port-forward`, to inspect the metrics:
+
+```console
+kubectl port-forward --namespace wordpress svc/wordpress-metrics 9150:9150
+```
+
+The exposed `metrics` can be `visualized` using the web browser on localhost:
+
+```url
+http://127.0.0.1:9150/metrics
+```
+
+Finally, you need to configure on your cluster the Grafana and Prometheus.
+
 ### Configuring WordPress Plugins
 
-TODO
+Plugins are the building blocks of your WordPress site. They bring in important functions to your website, whether you need to add contact forms, improve SEO, increase site speed, create an online store, or offer email opt-ins. Whatever you need your website to do can be done with a plugin.
+
+Below you can find a list of recommended plugins:
+
+- [Contact Form by WPForms](https://wordpress.org/plugins/wpforms-lite/): allows you to create beautiful contact forms, feedback form, subscription forms, payment forms, and other types of forms for your site.
+
+- [MonsterInsights](https://wordpress.org/plugins/google-analytics-for-wordpress/): is the best Google Analytics plugin for WordPress. It allows you to “properly” connect your website with Google Analytics, so you can see exactly how people find and use your website.
+
+- [All in One SEO](https://wordpress.org/plugins/all-in-one-seo-pack/): helps you get more visitors from search engines to your website. While WordPress is SEO friendly out of the box, there is so much more you can do to increase your website traffic using SEO best practices.
+
+- [SeedProd](https://wordpress.org/plugins/coming-soon/): is the best drag and drop page builder for WordPress. It allows you to easily customize your website design and create custom page layouts without writing any code.
+
+- [LiteSpeed Cache](https://wordpress.org/plugins/litespeed-cache/): is an all-in-one site acceleration plugin, featuring an exclusive server-level cache and a collection of optimization feature
+
+- [UpdraftPlus](https://wordpress.org/plugins/updraftplus/): simplifies backups and restoration.  Backup your files and database backups into the cloud and restore with a single click.
+
+Please visit <https://wordpress.org/plugins/> for more plugins
 
 ### Upgrading WordPress
 

@@ -9,6 +9,10 @@ persistence:
   accessModes: ["ReadWriteOnce"]
   size: 5Gi
 
+# Prometheus Exporter / Metrics configuration
+metrics:
+  enabled: false
+
 # Level of auto-updates to allow. Allowed values: major, minor or none.
 wordpressAutoUpdateLevel: minor
 

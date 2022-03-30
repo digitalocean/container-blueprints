@@ -1,42 +1,47 @@
-## Overview
+# Overview
 
-[WordPress](https://wordpress.org/about/) is an Open Source software designed for everyone, emphasizing accessibility, performance, security, and ease of use to create a website, blog, or app. [WordPress](https://en.wikipedia.org/wiki/WordPress) is a content managment system (CMS) built on PHP and using MySQL as a data store, powering over 30% of internet sites today.
+[WordPress](https://wordpress.org/about/) is an open source software designed for everyone, emphasising accessibility, performance, security, and ease of use to create a website, blog, or app. [WordPress](https://en.wikipedia.org/wiki/WordPress) is a content managment system (CMS) built on PHP and using MySQL as a data store, powering over 30% of internet sites today.
 
-In this tutorial, we’ll use Helm for setting up [WordPress](https://wordpress.com/) on top of a Kubernetes cluster, in order to create a highly-available website. In addition to leveraging the intrinsic scalability and high availability aspects of Kubernetes, this setup will help keeping WordPress secure by providing simplified upgrade and rollback workflows via Helm.
+In this tutorial, you will use Helm for setting up [WordPress](https://wordpress.com/) on top of a Kubernetes cluster, in order to create a highly-available website. In addition to leveraging the intrinsic scalability and high availability aspects of Kubernetes, this setup will help keeping WordPress secure by providing simplified upgrade and rollback workflows via Helm.
 
-We’ll be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
+You will be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
+
+## WordPress Setup Overview
+
+![WordPress Setup Overview](assets/images/arch_wordpress.drawio.png)
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-- [Prerequisites](#prerequisites)
-- [Setup the DigitalOcean Managed Kubernetes Cluster (DOKS)](#setup-the-digitalocean-managed-kubernetes-cluster-doks)
-- [Setup DigitalOcean’s Managed Databases MySQL](#setup-digitaloceans-managed-databases-mysql)
-- [Deploy WordPress](#deploy-wordpress)
-  - [Deploying the Helm Chart](#deploying-the-helm-chart)
-  - [Secure traffic with TLS and Let's Encrypt SSL certificates](#secure-traffic-with-tls-and-lets-encrypt-ssl-certificates)
-    - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
-    - [Installing the Cert-Mananger](#installing-the-cert-mananger)
-    - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
-  - [Confiugre plugins](#confiugre-plugins)
-  - [Upgrade WordPress](#upgrade-wordpress)
-- [Conclusion](#conclusion)
+  - [WordPress Setup Overview](#wordpress-setup-overview)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Setup the DigitalOcean Managed Kubernetes Cluster (DOKS)](#setup-the-digitalocean-managed-kubernetes-cluster-doks)
+  - [Configuring a MySQL Managed Database](#configuring-a-mysql-managed-database)
+  - [Deploy WordPress](#deploy-wordpress)
+    - [Deploying the Helm Chart](#deploying-the-helm-chart)
+    - [Securing traffic using Let's Encrypt certificates](#securing-traffic-using-lets-encrypt-certificates)
+      - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
+      - [Installing Cert-Manager](#installing-cert-manager)
+      - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
+    - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
+    - [Upgrading WordPress](#upgrading-wordpress)
+  - [Conclusion](#conclusion)
 
 ## Prerequisites
 
 To complete this tutorial, you will need:
 
-1. [Doctl](https://github.com/digitalocean/doctl/releases) CLI, for `DigitalOcean` API interaction.
-2. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction.
-3. Basic knowledge on how to run and operate `DOKS` clusters. You can learn more [here](https://docs.digitalocean.com/products/kubernetes).
-4. [MySQL database](https://docs.digitalocean.com/products/databases/mysql/).
-5. [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/).
-6. [Cert-Manager](https://cert-manager.io/docs/).
+1. [Helm](https://www.helm.sh/), for managing WordPress, Nginx Ingress Controller and Cert-Mananger releases and upgrades.
+2. [Doctl](https://github.com/digitalocean/doctl/releases) CLI, for `DigitalOcean` API interaction.
+3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction.
+4. Basic knowledge on how to run and operate `DOKS` clusters. You can learn more [here](https://docs.digitalocean.com/products/kubernetes).
 
 ## Setup the DigitalOcean Managed Kubernetes Cluster (DOKS)
 
-Before you begin you need to setup the DigitalOcean Managed Kubernetes Cluster (DOKS), the below example will create one for you. If you already have one configured please skip to the next chapter [Setup DigitalOcean’s Managed Databases MySQL](#setup-digitaloceans-managed-databases-mysql).
+Before proceeding with tutorial steps, you need a DigitalOcean Managed Kubernetes Cluster (DOKS) available and ready to use. If you already have one configured, you can skip to the next section - [Setup DigitalOcean’s Managed Databases MySQL](#setup-digitaloceans-managed-databases-mysql).
+
+You can use below command to create a new DOKS cluster:
 
 ```console
 doctl k8s cluster create <YOUR_CLUSTER_NAME> \
@@ -48,19 +53,19 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 **Notes:**
 
-- The example is using `4cpu/8gb` AMD nodes (`$48/month`), `3` default, and auto-scale to `2-4`. So, your cluster cost is between `$96-$192/month`, with `hourly` billing. To choose a different node type, pick from the following command `doctl compute size list`.
+- The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
 
 - Please visit [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS) for more details.
 
-## Setup DigitalOcean’s Managed Databases MySQL
+## Configuring a MySQL Managed Database
 
-In this section, we’ll create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because our WordPress installation will live on a separate server inside the Kubernetes cluster.
+In this section, you will create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because our WordPress installation will live on a separate server inside the Kubernetes cluster.
 
 **Note:**
 
-By default, the WordPress Helm chart installs MariaDB on a separate pod inside the cluster and uses it as the WordPress database, if you want to do not use an external database please continue to the next chapter [Deploy WordPress](#deploy-wordpress).
+By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Deploy WordPress](#deploy-wordpress).
 
-First, we create a managed database on DigitalOcean:
+First, you need to create the MySQL managed database:
 
 ```console
 doctl databases create wordpress-mysql --engine mysql --region nyc1
@@ -74,9 +79,14 @@ ID                                      Name                    Engine    Versio
 ```
 
 **Note:**
-In order for finishing the setup for the MySQL database, the database id is required and can be extracted running `doctl databases list`.
 
-Next, we will create the wordpress database user:
+- To finish setting up MySQL, the database ID is required. You can run below command, to print your MySQL database ID:
+
+  ```console
+  doctl databases list
+  ```
+
+Next, you will create the wordpress database user:
 
 ```console
 doctl databases user create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72 wordpress_user
@@ -89,7 +99,7 @@ Name              Role      Password
 wordpress_user    normal    *******
 ```
 
-Next, we will create a database:
+Next, you will create a database:
 
 ```console
 doctl databases db create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72  wordpres
@@ -102,7 +112,7 @@ Name
 wordpres
 ```
 
-Finnally, we need to setup the trusted sources for the MySQL, steps to follow:
+Finally, you need to setup the trusted sources for your MySQL database:
 
  1. First extract the Kubernetes cluster ID:
 
@@ -136,11 +146,12 @@ For more details please visit [How to Secure MySQL Managed Database Clusters](ht
 
 ### Deploying the Helm Chart
 
-Now it’s time to install WordPress on the cluster, the following WordPress [Helm Chart](https://github.com/bitnami/charts/tree/master/bitnami/wordpress/) will be used because is simple and easily to be configured.
+In this section, you will install WordPress in your Kubernetes cluster using the [Bitnami WordPress Helm Chartt](https://github.com/bitnami/charts/tree/master/bitnami/wordpress/).
 
-**Note:**
+Most important Helm chart values are:
 
- The critical setting are `externalDatabase` and `mariadb.enabled`, this will make WordPress to use an external database or use a different pod inside the cluster where mariadb will be configured.
+- `externalDatabase`- configures WordPress to use an external database (such as a DO managed MySQL database).
+- `mariadb.enabled` - configures WordPress to use an in-cluster database (e.g. MariaDB).
 
 First, add the `Helm` repo, and list the available `charts`:
 
@@ -218,13 +229,13 @@ NAME      NAMESPACE REVISION UPDATED                              STATUS   CHART
 wordpress wordpress 1        2022-03-22 14:22:18.146474 +0200 EET deployed wordpress-13.1.4 5.9.2
 ```
 
-Verify if the WordPress is up and running:
+Verify if WordPress is up and running:
 
 ```console
 kubectl get all -n wordpress
 ```
 
-The output looks similar to (notice the wordpress, which should be UP and RUNNING):
+The output looks similar to (all `wordpress` pods should be UP and RUNNING):
 
 ```text
 NAME                             READY   STATUS    RESTARTS   AGE
@@ -240,7 +251,7 @@ NAME                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/wordpress-6f55c9ffbd   1         1         1       23h
 ```
 
-### Secure traffic with TLS and Let's Encrypt SSL certificates
+### Securing traffic using Let's Encrypt certificates
 
 The Bitnami WordPress Helm chart comes with built-in support for Ingress routes and certificate management through [cert-manager](https://github.com/jetstack/cert-manager). This makes it easy to configure TLS support using certificates from a variety of certificate providers, including [Let's Encrypt](https://letsencrypt.org/).
 
@@ -275,9 +286,9 @@ NAME            NAMESPACE       REVISION        UPDATED                         
 ingress-nginx   ingress-nginx   1               2022-02-14 12:04:06.670028 +0200 EET    deployed        ingress-nginx-4.0.13    1.1.0
 ```
 
-#### Installing the Cert-Mananger
+#### Installing Cert-Manager
 
-First, add the Helm repo, and list the available charts:
+First, add the `jetstack` Helm repo, and list the available charts:
 
 ```console
 helm repo add jetstack https://charts.jetstack.io
@@ -285,7 +296,7 @@ helm repo add jetstack https://charts.jetstack.io
 helm repo update jetstack
 ```
 
-Next, install the Cert-Manager using Helm:
+Next, install Cert-Manager using Helm:
 
 ```console
 helm install cert-manager jetstack/cert-manager --version 1.6.1 \
@@ -293,13 +304,13 @@ helm install cert-manager jetstack/cert-manager --version 1.6.1 \
   --create-namespace
 ```
 
-Finally, check if the Helm installation was successful by running command below:
+Finally, check if Cert-Manager installation was successful by running below command:
 
 ```console
 helm ls -n cert-manager
 ```
 
-The output looks similar to the following (notice the `STATUS` column which has the `deployed` value):
+The output looks similar to (`STATUS` column should print `deployed`):
 
 ```text
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
@@ -308,13 +319,13 @@ cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300
 
 **Notes:**
 
-- For advance configuration of Nginx Ingress Controller and Cert-mananger pelase visit [How to Configure Ingress using Nginx](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/blob/main/03-setup-ingress-controller/nginx.md) for more details.
+- For more details about Nginx Ingress Controller and Cert-Manager, please visit Starter Kit chapter - [How to Configure Ingress using Nginx](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/blob/main/03-setup-ingress-controller/nginx.md).
 
-- An alternative way to install [NGINX Ingress Controller](https://marketplace.digitalocean.com/apps/nginx-ingress-controller) and [Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) is by using the DigitalOcean market place where you can install them using 1-Click App Addon.
+- An alternative way to install[ NGINX Ingress Controller](https://marketplace.digitalocean.com/apps/nginx-ingress-controller) and [Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) is via the DigitalOcean 1-click apps platform.
 
 #### Configuring Production Ready TLS Certificates for WordPress
 
-Before creating the certificate is required a cluster issuer to be created for cert-mananger in order to know where the certificate to be created, for eg, we will use the Let's Encrypt production. Create the following YAML file and replace <YOUR-EMAIL-HERE> with the contact email that you want the TLS certificate to show.
+A cluster issuer is required first, in order to obtain the final TLS certificate. Create the following YAML file, and replace using a valid email address for TLS certificate registration.
 
 ```yml
 # letsencrypt-issuer.yaml
@@ -390,13 +401,13 @@ wordpress.local-tls   True    wordpress.local-tls   24h
 
 Now, you can access the WordPress using the domain configured earlier.
 
-### Confiugre plugins
+### Configuring WordPress Plugins
 
 TODO
 
-### Upgrade WordPress
+### Upgrading WordPress
 
-Because of its popularity, WordPress is often a target for malicious exploitation, so it’s important to keep it updated. We can upgrade Helm releases with the command helm upgrade.
+Being so popular, WordPress becomes often a target for malicious exploitation, so it’s important to keep it up to date. You can upgrade WordPress via the `helm upgrade` command.
 
 First, update the helm repository:
 
@@ -423,6 +434,6 @@ Replace `WORDPRESS_NEW_VERSION` with the new version.
 
 ## Conclusion
 
-In this guide, we installed WordPress with an external MySQL server on a Kubernetes cluster using the command-line tool Helm. We also learned how to upgrade a WordPress release to a new chart version, and how to rollback a release if something goes wrong throughout the upgrade process.
+In this guide, you learned how to install WordPress the Kubernetes way, using Helm and an external MySQL database. You also learned how to upgrade WordPress to a new version, and how to rollback to a previous release, in case of errors.
 
 If you want to learn more about Kubernetes and Helm, please check out the [DO Kubernetes](https://www.digitalocean.com/community/tags/kubernetes) section of our community page.

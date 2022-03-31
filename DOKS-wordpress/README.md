@@ -6,28 +6,25 @@ In this tutorial, you will use Helm for setting up [WordPress](https://wordpress
 
 You will be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
 
-## WordPress Setup Overview
-
-![WordPress Setup Overview](assets/images/arch_wordpress.drawio.png)
-
-## Table of Contents
-
 - [Overview](#overview)
-  - [WordPress Setup Overview](#wordpress-setup-overview)
-  - [Table of Contents](#table-of-contents)
+  - [WordPress Setup Diagram](#wordpress-setup-diagram)
   - [Prerequisites](#prerequisites)
-  - [Setup the DigitalOcean Managed Kubernetes Cluster (DOKS)](#setup-the-digitalocean-managed-kubernetes-cluster-doks)
-  - [Configuring a MySQL Managed Database](#configuring-a-mysql-managed-database)
-  - [Deploy WordPress](#deploy-wordpress)
+  - [Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)](#setting-up-a-digitalocean-managed-kubernetes-cluster-doks)
+  - [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database)
+  - [Installing WordPress](#installing-wordpress)
     - [Deploying the Helm Chart](#deploying-the-helm-chart)
-    - [Securing traffic using Let's Encrypt certificates](#securing-traffic-using-lets-encrypt-certificates)
+    - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
       - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
       - [Installing Cert-Manager](#installing-cert-manager)
       - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
-    - [Enable WordPress metrics](#enable-wordpress-metrics)
+    - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
     - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
     - [Upgrading WordPress](#upgrading-wordpress)
   - [Conclusion](#conclusion)
+
+## WordPress Setup Diagram
+
+![WordPress Setup Overview](assets/images/arch_wordpress.drawio.png)
 
 ## Prerequisites
 
@@ -38,7 +35,7 @@ To complete this tutorial, you will need:
 3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction.
 4. Basic knowledge on how to run and operate `DOKS` clusters. You can learn more [here](https://docs.digitalocean.com/products/kubernetes).
 
-## Setup the DigitalOcean Managed Kubernetes Cluster (DOKS)
+## Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)
 
 Before proceeding with tutorial steps, you need a DigitalOcean Managed Kubernetes Cluster (DOKS) available and ready to use. If you already have one configured, you can skip to the next section - [Setup DigitalOcean’s Managed Databases MySQL](#setup-digitaloceans-managed-databases-mysql).
 
@@ -58,15 +55,15 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 - Please visit [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS) for more details.
 
-## Configuring a MySQL Managed Database
+## Configuring the WordPress MySQL DO Managed Database
 
-In this section, you will create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because our WordPress installation will live on a separate server inside the Kubernetes cluster.
+In this section, you will create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because your WordPress installation will live on a separate server inside the Kubernetes cluster.
 
 **Note:**
 
 By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Deploy WordPress](#deploy-wordpress).
 
-First, you need to create the MySQL managed database:
+First, create the MySQL managed database:
 
 ```console
 doctl databases create wordpress-mysql --engine mysql --region nyc1 --num-nodes 2 --size db-s-2vcpu-4gb
@@ -91,7 +88,7 @@ ID                                      Name                    Engine    Versio
   doctl databases list
   ```
 
-Next, you will create the wordpress database user:
+Next, create the main WordPress database:
 
 ```console
 doctl databases user create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72 wordpress_user
@@ -104,10 +101,10 @@ Name              Role      Password
 wordpress_user    normal    *******
 ```
 
-Next, you will create a database:
+Next, create the WordPress database user:
 
 ```console
-doctl databases db create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72  wordpres
+doctl databases user create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72  wordpress
 ```
 
 The output looks similar to the following (the password will be generated automatically):
@@ -147,7 +144,7 @@ Finally, you need to setup the trusted sources for your MySQL database:
 
 For more details please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
 
-## Deploy WordPress
+## Installing WordPress
 
 ### Deploying the Helm Chart
 
@@ -260,7 +257,7 @@ NAME                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/wordpress-6f55c9ffbd   1         1         1       23h
 ```
 
-### Securing traffic using Let's Encrypt certificates
+### Securing Traffic using Let's Encrypt Certificates
 
 The Bitnami WordPress Helm chart comes with built-in support for Ingress routes and certificate management through [cert-manager](https://github.com/jetstack/cert-manager). This makes it easy to configure TLS support using certificates from a variety of certificate providers, including [Let's Encrypt](https://letsencrypt.org/).
 
@@ -408,13 +405,13 @@ NAME                  READY   SECRET                AGE
 wordpress.local-tls   True    wordpress.local-tls   24h
 ```
 
-Now, you can access the WordPress using the domain configured earlier.
+Now, you can access WordPress using the domain configured earlier.
 
-### Enable WordPress metrics
+### Enabling WordPress Monitoring Metrics
 
-In this section, you will learn how to enable the WordPress metrics for monitoring your cluster.
+In this section, you will learn how to enable metrics for monitoring your WordPress instance.
 
-First, open the YAML file `(values.yml)` created earlier and enable the metrics, like in the below example:
+First, open the `values.yml` created earlier in this tutorial, and set `metrics.enabled` field to `true`:
 
 ```yaml
 # Prometheus Exporter / Metrics configuration
@@ -422,7 +419,7 @@ metrics:
   enabled: true
 ```
 
-Apply the change via `helm`:
+Apply changes using Helm:
 
 ```console
 helm upgrade wordpress bitnami/wordpress \
@@ -433,19 +430,15 @@ helm upgrade wordpress bitnami/wordpress \
     --values values.yml
 ```
 
-Next, please perform a `port-forward`, to inspect the metrics:
+Next, port-forward the wordpress service to inspect the available metrics:
 
 ```console
 kubectl port-forward --namespace wordpress svc/wordpress-metrics 9150:9150
 ```
 
-The exposed `metrics` can be `visualized` using the web browser on localhost:
+Now, open a web browser and navigate to [localhost:9150/metrics](http://127.0.0.1:9150/metrics), to see all WordPress metrics.
 
-```url
-http://127.0.0.1:9150/metrics
-```
-
-Finally, you need to configure on your cluster the Grafana and Prometheus.
+Finally, you need to configure Grafana and Prometheus to visualise metrics exposed by your new WordPress instance. Please visit [How to Install the Prometheus Monitoring Stack](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/04-setup-prometheus-stack) to learn more how to install and configure Grafana and Prometheus.
 
 ### Configuring WordPress Plugins
 

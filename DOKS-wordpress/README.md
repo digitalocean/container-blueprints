@@ -88,7 +88,7 @@ ID                                      Name                    Engine    Versio
   doctl databases list
   ```
 
-Next, create the main WordPress database:
+Next, create the WordPress database user:
 
 ```console
 doctl databases user create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72 wordpress_user
@@ -101,22 +101,22 @@ Name              Role      Password
 wordpress_user    normal    *******
 ```
 
-Next, create the WordPress database user:
+Next, create the main WordPress database:
 
 ```console
-doctl databases user create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72  wordpress
+doctl databases db create 2f0d0969-a8e1-4f94-8b73-2d43c68f8e72 wordpress
 ```
 
 The output looks similar to the following (the password will be generated automatically):
 
 ```text
 Name
-wordpres
+wordpress
 ```
 
-Finally, you need to setup the trusted sources for your MySQL database:
+Finally, you need to setup the trusted sources between your MySQL database and your Kubernetes Cluster (DOKS):
 
- 1. First extract the Kubernetes cluster ID:
+ 1. First extract the Kubernetes Cluster ID:
 
     ```console
     doctl kubernetes cluster list

@@ -1,4 +1,4 @@
-# Overview
+## Overview
 
 [WordPress](https://wordpress.org/about/) is an open source software designed for everyone, emphasising accessibility, performance, security, and ease of use to create a website, blog, or app. [WordPress](https://en.wikipedia.org/wiki/WordPress) is a content managment system (CMS) built on PHP and using MySQL as a data store, powering over 30% of internet sites today.
 
@@ -7,20 +7,20 @@ In this tutorial, you will use Helm for setting up [WordPress](https://wordpress
 You will be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
 
 - [Overview](#overview)
-  - [WordPress Setup Diagram](#wordpress-setup-diagram)
-  - [Prerequisites](#prerequisites)
-  - [Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)](#setting-up-a-digitalocean-managed-kubernetes-cluster-doks)
-  - [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database)
-  - [Installing WordPress](#installing-wordpress)
-    - [Deploying the Helm Chart](#deploying-the-helm-chart)
-    - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
-      - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
-      - [Installing Cert-Manager](#installing-cert-manager)
-      - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
-    - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
-    - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
-    - [Upgrading WordPress](#upgrading-wordpress)
-  - [Conclusion](#conclusion)
+- [WordPress Setup Diagram](#wordpress-setup-diagram)
+- [Prerequisites](#prerequisites)
+- [Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)](#setting-up-a-digitalocean-managed-kubernetes-cluster-doks)
+- [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database)
+- [Installing WordPress](#installing-wordpress)
+  - [Deploying the Helm Chart](#deploying-the-helm-chart)
+  - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
+    - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
+    - [Installing Cert-Manager](#installing-cert-manager)
+    - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
+  - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
+  - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
+  - [Upgrading WordPress](#upgrading-wordpress)
+- [Conclusion](#conclusion)
 
 ## WordPress Setup Diagram
 

@@ -24,7 +24,7 @@ You will be using an external MySQL server in order to abstract the database com
 
 ## WordPress Setup Diagram
 
-![WordPress Setup Overview](assets/images/arch_wordpress.drawio.png)
+![WordPress Setup Overview](assets/images/arch_wordpress.png)
 
 ## Prerequisites
 

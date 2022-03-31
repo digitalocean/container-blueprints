@@ -16,7 +16,7 @@ spec:
       hostNetwork: true
       containers:
         - name: netclient-1
-          image: gravitl/netclient:0.9.2-doks
+          image: gravitl/netclient:v0.10.0
           lifecycle:
             preStop:
               exec:
@@ -33,7 +33,7 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
             - name: TOKEN
-              value: "eyJjb3JlZG5zYWRkciI6IjE1OS42NS4yMjAuMTkzIiwiYXBpY29ubiI6ImFwaS5ubS4xNTktNjUtMjIwLTE5My5uaXAuaW86NDQzIiwiYXBpaG9zdCI6ImFwaS5ubS4xNTktNjUtMjIwLTE5My5uaXAuaW8iLCJhcGlwb3J0IjoiODA4MSIsImdycGNjb25uIjoiZ3JwYy5ubS4xNTktNjUtMjIwLTE5My5uaXAuaW86NDQzIiwiZ3JwY2hvc3QiOiJncnBjLm5tLjE1OS02NS0yMjAtMTkzLm5pcC5pbyIsImdycGNwb3J0IjoiNTAwNTEiLCJncnBjc3NsIjoib24iLCJjaGVja2luaW50ZXJ2YWwiOiIxNSIsIm5ldHdvcmsiOiJuZXR3b3JrIiwia2V5IjoiVlVvQ0syYVNRNFZuWlk0ZyIsImxvY2FscmFuZ2UiOiIiLCJncnBjd2ciOiIiLCJncnBjd2dhZGRyIjoiIiwiZ3JwY3dncG9ydCI6IiIsImdycGN3Z3B1YmtleSI6IiIsImdycGN3Z2VuZHBvaW50IjoiIn0="
+              value: "eyJjb3JlZG5zYWRkciI6IjEzOC42OC4xNDkuMjUiLCJhcGljb25uIjoiYXBpLm5tLjEzOC02OC0xNDktMjUubmlwLmlvOjQ0MyIsImFwaWhvc3QiOiJhcGkubm0uMTM4LTY4LTE0OS0yNS5uaXAuaW8iLCJhcGlwb3J0IjoiODA4MSIsImdycGNjb25uIjoiZ3JwYy5ubS4xMzgtNjgtMTQ5LTI1Lm5pcC5pbzo0NDMiLCJncnBjaG9zdCI6ImdycGMubm0uMTM4LTY4LTE0OS0yNS5uaXAuaW8iLCJncnBjcG9ydCI6IjUwMDUxIiwiZ3JwY3NzbCI6Im9uIiwiY2hlY2tpbmludGVydmFsIjoiMTUiLCJuZXR3b3JrIjoiZGV2Iiwia2V5IjoiVU5TVUVOU3ltMFVSNkhzaCIsImxvY2FscmFuZ2UiOiIiLCJncnBjd2ciOiIiLCJncnBjd2dhZGRyIjoiIiwiZ3JwY3dncG9ydCI6IiIsImdycGN3Z3B1YmtleSI6IiIsImdycGN3Z2VuZHBvaW50IjoiIn0="
           volumeMounts:
             - mountPath: /etc/netclient
               name: etc-netclient
@@ -68,7 +68,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-        - image: gravitl/netclient:0.9.2-doks
+        - image: gravitl/netclient:v0.10.0
           imagePullPolicy: IfNotPresent
           name: wg-installer
           command: ["bash", "-c"]

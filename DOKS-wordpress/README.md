@@ -10,7 +10,7 @@ You will be using an external MySQL server in order to abstract the database com
 
 ![WordPress Setup Overview](assets/images/arch_wordpress.png)
 
-## Table of contents
+## Table of Contents
 
 - [Overview](#overview)
 - [WordPress Setup Diagram](#wordpress-setup-diagram)
@@ -105,7 +105,7 @@ wordpress_user    normal    *******
 
 **Note:**
 
-The new users will receive the full permissions at entire database by default, the privileges can be changed using the following instructions [How to Modify User Privileges in MySQL Databases](https://docs.digitalocean.com/products/databases/mysql/how-to/modify-user-privileges/).
+By default, new users get full permissions for the entire database. In general, it's best security practice to restrict new user privileges to the wordpress database only. You can follow the [How to Modify User Privileges in MySQL Databases](https://docs.digitalocean.com/products/databases/mysql/how-to/modify-user-privileges/) guide provided by DigitalOcean to accomplish this task.
 
 Next, create the main WordPress database:
 

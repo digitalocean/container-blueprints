@@ -101,6 +101,10 @@ Name              Role      Password
 wordpress_user    normal    *******
 ```
 
+**Note:**
+
+The new users will receive the full permissions at entire database by default, the privileges can be changed using the following instructions [How to Modify User Privileges in MySQL Databases](https://docs.digitalocean.com/products/databases/mysql/how-to/modify-user-privileges/).
+
 Next, create the main WordPress database:
 
 ```console

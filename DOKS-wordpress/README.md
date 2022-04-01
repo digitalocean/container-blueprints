@@ -148,13 +148,13 @@ Finally, you need to setup the trusted sources between your MySQL database and y
 
 **Note:**
 
-For more details please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
+Please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
 
 ## Installing WordPress
 
 ### Deploying the Helm Chart
 
-In this section, you will install WordPress in your Kubernetes cluster using the [Bitnami WordPress Helm Chartt](https://github.com/bitnami/charts/tree/master/bitnami/wordpress/).
+In this section, you will install WordPress in your Kubernetes cluster using the [Bitnami WordPress Helm Chart](https://github.com/bitnami/charts/tree/master/bitnami/wordpress/).
 
 Most important Helm chart values are:
 
@@ -194,16 +194,16 @@ wordpressAutoUpdateLevel: minor
 wordpressScheme: https
 
 # WordPress credentials
-wordpressUsername: <WORDPRESS_USER_HERE>
-wordpressPassword: <WORDPRESS_PASSSWORD_HERE>
+wordpressUsername: <YOUR_WORDPRESS_USER_NAME_HERE>
+wordpressPassword: <YOUR_WORDPRESS_USER_PASSSWORD_HERE>
 
 # External Database details
 externalDatabase:
-  host: <MYSQL_HOST_HERE>
+  host: <YOUR_WORDPRESS_MYSQL_DB_HOST_HERE>
   port: 25060
-  user: <MYSQL_DB_USER_HERE>
-  password: <MYSQL_DB_PASSWORD_HERE>
-  database: <MYSQL_DB_NAME_HERE>
+  user: <MYSQL_DB_USYOUR_WORDPRESS_MYSQL_DB_USER_NAME_HEREER_HERE>
+  password: <YOUR_WORDPRESS_MYSQL_DB_USER_PASSWORD_HERE>
+  database: <YOUR_WORDPRESS_MYSQL_DB_NAME_HERE>
 
 # Disabling MariaDB
 mariadb:
@@ -224,9 +224,12 @@ helm upgrade wordpress bitnami/wordpress \
     --install \
     --namespace wordpress \
     --version 13.1.4 \
-    --timeout 10m0s \
     --values values.yml
 ```
+
+**Note:**
+
+A specific version for the wordpress `Helm` chart is used. In this case `13.1.4` was picked, which maps to the `5.9.2` release of WordPress. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
 
 Check Helm release status:
 
@@ -377,13 +380,13 @@ ingress:
   enabled: true
   certManager: true
   tls: false
-  hostname: <YOUR_DOMAIN_HERE>
+  hostname: <YOUR_WORDPRESS_DOMAIN_HERE>
   annotations:
     kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   extraTls:
   - hosts:
-      - <YOUR_DOMAIN_HERE>
+      - <YOUR_WORDPRESS_DOMAIN_HERE>
     secretName: wordpress.local-tls
 ```
 

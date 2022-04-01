@@ -20,16 +20,16 @@ wordpressAutoUpdateLevel: minor
 wordpressScheme: https
 
 # WordPress credentials
-wordpressUsername: <WORDPRESS_USER_HERE>
-wordpressPassword: <WORDPRESS_PASSSWORD_HERE>
+wordpressUsername: <YOUR_WORDPRESS_USER_NAME_HERE>
+wordpressPassword: <YOUR_WORDPRESS_USER_PASSSWORD_HERE>
 
 # External Database details
 externalDatabase:
-  host: <MYSQL_HOST_HERE>
+  host: <YOUR_WORDPRESS_MYSQL_DB_HOST_HERE>
   port: 25060
-  user: <MYSQL_DB_USER_HERE>
-  password: <MYSQL_DB_PASSWORD_HERE>
-  database: <MYSQL_DB_NAME_HERE>
+  user: <YOUR_WORDPRESS_MYSQL_DB_USER_NAME_HERE>
+  password: <YOUR_WORDPRESS_MYSQL_DB_USER_PASSWORD_HERE>
+  database: <YOUR_WORDPRESS_MYSQL_DB_NAME_HERE>
 
 # Disabling MariaDB
 mariadb:
@@ -40,11 +40,11 @@ ingress:
   enabled: true
   certManager: true
   tls: false
-  hostname: <YOUR_DOMAIN_HERE>
+  hostname: <YOUR_WORDPRESS_DOMAIN_HERE>
   annotations:
     kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   extraTls:
   - hosts:
-      - <YOUR_DOMAIN_HERE>
+      - <YOUR_WORDPRESS_DOMAIN_HERE>
     secretName: wordpress.local-tls

@@ -37,7 +37,7 @@ To complete this tutorial, you will need:
 
 ## Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)
 
-Before proceeding with tutorial steps, you need a DigitalOcean Managed Kubernetes Cluster (DOKS) available and ready to use. If you already have one configured, you can skip to the next section - [Setup DigitalOcean’s Managed Databases MySQL](#setup-digitaloceans-managed-databases-mysql).
+Before proceeding with tutorial steps, you need a DigitalOcean Managed Kubernetes Cluster (DOKS) available and ready to use. If you already have one configured, you can skip to the next section - [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database).
 
 You can use below command to create a new DOKS cluster:
 
@@ -61,7 +61,7 @@ In this section, you will create a dedicated MySQL database such as [DigitalOcea
 
 **Note:**
 
-By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Deploy WordPress](#deploy-wordpress).
+By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Installing WordPress](#installing-wordpress).
 
 First, create the MySQL managed database:
 

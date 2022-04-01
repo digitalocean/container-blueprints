@@ -6,6 +6,12 @@ In this tutorial, you will use Helm for setting up [WordPress](https://wordpress
 
 You will be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
 
+## WordPress Setup Diagram
+
+![WordPress Setup Overview](assets/images/arch_wordpress.png)
+
+## Table of contents
+
 - [Overview](#overview)
 - [WordPress Setup Diagram](#wordpress-setup-diagram)
 - [Prerequisites](#prerequisites)
@@ -21,10 +27,6 @@ You will be using an external MySQL server in order to abstract the database com
   - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
   - [Upgrading WordPress](#upgrading-wordpress)
 - [Conclusion](#conclusion)
-
-## WordPress Setup Diagram
-
-![WordPress Setup Overview](assets/images/arch_wordpress.png)
 
 ## Prerequisites
 

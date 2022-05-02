@@ -34,6 +34,7 @@ How this blueprint is structured:
 - [Prerequisites](#prerequisites)
 - [Getting to Know Kaniko](#getting-to-know-kaniko)
 - [Getting to Know Tekton](#getting-to-know-tekton)
+  - [Tasks](#tasks)
   - [Pipelines](#pipelines)
   - [Event Listeners and Triggers](#event-listeners-and-triggers)
   - [Tekton Catalog](#tekton-catalog)
@@ -68,13 +69,6 @@ In this blueprint, you will use Kaniko to build Docker images for your custom ap
 
 ## Getting to Know Tekton
 
-[Tekton](https://tekton.dev) is a cloud native solution for building CI/CD systems. It is specifically engineered to run on Kubernetes, and empowers developers to create CI pipelines using reusable blocks. Other important components are Tekton CLI and Catalog, that make Tekton a complete ecosystem.
-
-This tutorial relies on two important Tekton components to implement the CI part:
-
-- [Pipelines](https://tekton.dev/docs/pipelines/pipelines): used to create the actual CI/CD flow.
-- [Triggers and EventListeners](https://tekton.dev/docs/triggers): used to capture and trigger on Git events (e.g. git push events).
-
 Continuous integration (or CI) is the process of automating the integration of small code changes from multiple contributors into a single software project. To achieve CI a central repository is used (e.g. Git), where each developer (or contributor) pushes code changes. Then, a CI tool (e.g. Tekton) detects changes and starts the CI automation.
 
 In general, each CI automation consists of several steps:
@@ -85,9 +79,17 @@ In general, each CI automation consists of several steps:
 4. Creating the final artifact (a binary or a zip file, a Docker file, etc) for application delivery.
 5. Pushing the application artifact to a remote repository for later use by a continuous delivery system.
 
-### Pipelines
+[Tekton](https://tekton.dev) is a cloud native solution for building CI/CD systems on top of Kubernetes clusters. It is specifically engineered to run on Kubernetes, and empowers developers to create CI pipelines using reusable blocks called Tasks. Other important components are Tekton CLI and Catalog (collection of reusable Tasks), that make Tekton a complete ecosystem.
 
-In Tekton CI automation is implemented using pipelines. A Tekton pipeline consists of tasks used to perform a series of steps in order. Steps are the basic unit of execution in Tekton which perform actions such as build code, create image, push to Docker registry, etc. In other words, a pipeline is used for orchestrating tasks and steps in a CI setup (such as specifying which tasks need to be run in sequence or in parallel).
+This tutorial relies on the following Tekton concepts to implement the CI part:
+
+- [Tasks](https://tekton.dev/docs/pipelines/tasks) - used to organize the steps performing each action such as build and test your application code.
+- [Pipelines](https://tekton.dev/docs/pipelines/pipelines) - used to organize tasks and define your custom CI flow.
+- [Triggers and EventListeners](https://tekton.dev/docs/triggers) - used to capture and trigger on Git events (e.g. git push events).
+
+### Tasks
+
+A Task is a collection of Steps that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create image, push to Docker registry, etc. To add Steps to a Task you define a steps field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
 
 For each task, Tekton creates a Kubernetes Pod in your cluster to run the steps. Then, each step runs in a docker container, thus it must reference a docker image. The container you choose depends on what your step does. For example:
 
@@ -96,25 +98,135 @@ For each task, Tekton creates a Kubernetes Pod in your cluster to run the steps.
 - Run kubectl: use the `bitnami/kubectl` image.
 - An image of your own to perform custom actions.
 
-Each task and pipeline may have its own inputs and outputs, known as input and output resources in Tekton. A compilation task, for example, may have a git repository as input and a container image as output: the task clones the source code from the repository, runs some tests, and at last builds the source code into an executable container image.
+Task definitions are composed of (most important are highlighted):
+
+- [Parameters](https://tekton.dev/docs/pipelines/tasks/#specifying-parameters) - used to specify input parameters for a task such as compilation flags, artifacts name, etc.
+- [Resources](https://tekton.dev/docs/pipelines/tasks/#specifying-resources) - each task may have its own inputs and outputs, known as input and output resources in Tekton. A compilation task, for example, may have a git repository as input and a container image as output: the task clones the source code from the repository, runs some tests, and at last builds the source code into an executable container image.
+- [Workspaces](https://tekton.dev/docs/pipelines/tasks/#specifying-workspaces) - used to share data (artifacts) between steps defined in a task.
+- [Results](https://tekton.dev/docs/pipelines/tasks/#emitting-results) - represent a string value emitted by a Task. Results can be passed between Tasks inside a pipeline. Results are also visible to users, and represent important information such as SHA id for a cloned repository (emitted by the [git-clone](https://hub.tekton.dev/tekton/task/git-clone) Task).
+
+Typical `Task` definition looks like below:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: example-task-name
+spec:
+  params:
+    - name: pathToDockerFile
+      type: string
+      description: The path to the dockerfile to build
+      default: /workspace/workspace/Dockerfile
+  resources:
+    inputs:
+      - name: workspace
+        type: git
+    outputs:
+      - name: builtImage
+        type: image
+  steps:
+    - name: ubuntu-example
+      image: ubuntu
+      args: ["ubuntu-build-example", "SECRETS-example.md"]
+    - name: dockerfile-pushexample
+      image: gcr.io/example-builders/push-example
+      args: ["push", "$(resources.outputs.builtImage.url)"]
+      volumeMounts:
+        - name: docker-socket-example
+          mountPath: /var/run/docker.sock
+```
+
+Explanation for the above configuration:
+
+- `spec.params`: defines the list of input parameters for the Task.
+- `spec.resources`: defines the input/output resources for the Task (via `spec.resources.inputs`, and `spec.resources.outputs` respectively).
+- `spec.steps`: defines the list of steps to be executed in order as part of the Task.
+
+By design, Tekton will not run your Tasks when created. To launch a Task into execution, you need to create a separate [TaskRun](https://tekton.dev/docs/pipelines/taskruns) resource. A TaskRun is what instantiates your Task and begin execution of steps. A TaskRun executes the Steps in the Task in the order they are specified until all Steps have executed successfully or a failure occurs. Also, a TaskRun allows to pass input parameters, as well as specifying resources and workspaces for your custom Task.
 
 What's important to remember is that tasks are reusable building blocks that can be shared and referenced across pipelines. This design aspect makes Tekton unique. To help users even more, Tekton project offers a collection of reusable tasks via the [Tekton Catalog](https://hub.tekton.dev) project.
 
-By design, Tekton will not run your Tasks or Pipelines when created. To launch a Task/Pipeline into execution, you need to create a corresponding TaskRun/PipelineRun resource. Tasks referenced within a Pipeline will get the corresponding TaskRun objects created automatically (no need to create them separately).
+Below picture illustrates the `Task` and `TaskRun` concepts:
 
-It is not necessarily a requirement to create a Tekton Pipeline to run a Task. In a simple scenario, you can just go ahead and create a TaskRun to execute a Task (and the corresponding steps). Pipelines can be used in more complex scenarios where multiple Tasks can be leveraged to create more complex logic and solve a bigger problem. In practice is best to design simple Tasks definitions focused on a single thing. You can also think of a Task as a black box with specific inputs and outputs (just like a class is in object oriented programming). To continue the idea, Tasks should respect the single responsibility principle (or SRP).
+![Tekton Task/TaskRun Overview](assets/images/tekton_tasks_overview.png)
 
-You can embed tasks in a pipeline directly, or use a reference to each. By using a reference, you create task definitions in separate manifest files, and have them reused across different pipelines. This is encouraged because it avoids code or configuration duplication, and promotes `code reuse` (or configuration reuse).
+Please visit the [official documentation page](https://tekton.dev/docs/pipelines/tasks) for more information and details about Tekton Tasks.
 
-Below picture illustrates pipelines composition and relationship between tasks:
+### Pipelines
 
-![Task and Pipelines Concepts](assets/images/concept-tasks-pipelines.png)
+A Tekton pipeline is used to organize your Tekton tasks and orchestrate the CI flow. A Pipeline specifies one or more Tasks in the desired order of execution. You can embed tasks in a pipeline directly, or reference them from external manifest files. By using references, you create task definitions in separate manifest files, and have them reused across different pipelines. This method is encouraged because it avoids code or configuration duplication, and promotes `code reuse` (or configuration reuse). Thus, tasks act as objects (with inputs and outputs) that can be reused (and instantiated) across your pipelines. You can create dedicated pipelines to test, or build and deploy your applications code.
 
-Please visit the [official project page](https://tekton.dev/docs/pipelines/pipelines) for more information and details about Tekton pipelines.
+Pipeline definitions are composed of (most important are highlighted):
+
+- [Parameters](https://tekton.dev/docs/pipelines/pipelines/#specifying-parameters) - used to specify input parameters (at a global level) for all tasks within a Pipeline.
+- [Resources](https://tekton.dev/docs/pipelines/pipelines/#specifying-resources) - used to specify inputs and outputs for Tasks within a Pipeline.
+- [Workspaces](https://tekton.dev/docs/pipelines/pipelines/#specifying-workspaces) - used to specify a workspace for shared artifacts between Tasks within a Pipeline.
+
+Typical `Pipeline` definition looks like below:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: kaniko-pipeline
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: image-name
+    - name: path-to-image-context
+    - name: path-to-dockerfile
+  workspaces:
+    - name: git-source
+  tasks:
+    - name: fetch-from-git
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: git-source
+    - name: build-image
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+        - name: CONTEXT
+          value: $(params.path-to-image-context)
+        - name: DOCKERFILE
+          value: $(params.path-to-dockerfile)
+      workspaces:
+        - name: source
+          workspace: git-source
+```
+
+Explanation for the above configuration:
+
+- `spec.params`: defines the list of input parameters for the Pipeline.
+- `spec.workspaces`: defines a list of workspaces to be used by each Task inside the Pipeline. Workspaces are used to share data (or artifacts) between tasks.
+- `spec.tasks`: defines the list of tasks (can be embedded or referenced using `taskRef`) to be executed in order as part of the Pipeline.
+
+By design, Tekton will not run your Pipelines when created. To launch a Pipeline into execution, you need to create a separate [PipelineRun](https://tekton.dev/docs/pipelines/pipelineruns) resource. A PipelineRun allows you to instantiate and execute a Tekton Pipeline in your Kubernetes cluster. A PipelineRun executes the Tasks in the Pipeline in the order they are specified until all Tasks have executed successfully or a failure occurs.
+
+**Note:**
+
+Tasks referenced within a Pipeline will get the corresponding TaskRun objects created automatically (no need to create them separately).
+
+Below picture illustrates Pipelines and Tasks composition:
+
+![Task and Pipelines Concepts](assets/images/tekton_pipelines_overview.png)
+
+Please visit the [official documentation page](https://tekton.dev/docs/pipelines/pipelines) for more information and details about Tekton Pipelines.
 
 ### Event Listeners and Triggers
 
-You need a mechanism to tell Tekton how to react and trigger your CI pipeline in response to GitHub events. This is accomplished via another Tekton component called Triggers (needs to be installed separately). Tekton triggers allows you to detect and extract information from events from a variety of sources and execute TaskRuns and PipelineRuns based on that information. It can also pass information extracted from events directly to TaskRuns and PipelineRuns.
+You need a mechanism to tell Tekton how to react and trigger your CI pipeline in response to external events emitted by various sources (such as GitHub for example). This is accomplished via another Tekton component called Triggers (needs to be installed separately). Tekton triggers allows you to detect and extract information from events from a variety of sources and execute TaskRuns and PipelineRuns based on that information. It can also pass information extracted from events directly to TaskRuns and PipelineRuns.
 
 Following resources are required to automatically trigger a CI pipeline using GitHub webhooks:
 

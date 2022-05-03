@@ -48,14 +48,26 @@ How this blueprint is structured:
 - [Step 1 - Installing Tekton](#step-1---installing-tekton)
   - [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines)
   - [Provisioning Tekton Triggers](#provisioning-tekton-triggers)
+  - [Provisioning Tekton Dashboard](#provisioning-tekton-dashboard)
 - [Step 2 - Installing Argo CD](#step-2---installing-argo-cd)
 - [Step 3 - Installing Knative](#step-3---installing-knative)
-- [Step 4 - Setting Up the CI/CD Pipeline using Tekton and Argo](#step-4---setting-up-the-cicd-pipeline-using-tekton-and-argo)
+- [Step 4 - Setting Up Your First CI/CD Pipeline Using Tekton and Argo](#step-4---setting-up-your-first-cicd-pipeline-using-tekton-and-argo)
 - [Step 5 - Testing the CI/CD Setup](#step-5---testing-the-cicd-setup)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
 ## Prerequisites
+
+To complete this tutorial, you will need:
+
+1. A working `DOKS` cluster running `Kubernetes version >=1.21` that you have access to. The DOKS cluster must have at least `2 nodes`, each with `2 CPUs`, `4 GB` of memory, and `20 GB` of disk storage. For additional instructions on configuring a DigitalOcean Kubernetes cluster, see: [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS#how-to-set-up-a-digitalocean-managed-kubernetes-cluster-doks).
+2. A [GitHub](https://github.com) repository and branch, to store your Argo CD and custom applications manifests. **Must be created beforehand.**
+3. A [Git](https://git-scm.com/downloads) client, to interact with your GitHub repository.
+4. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
+5. [Helm](https://www.helm.sh), for interacting with Helm releases created by the DigitalOcean 1-click apps used in this tutorial.
+6. [Argo CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation), to interact with `Argo CD` using the command line interface.
+7. [Tekton CLI](https://tekton.dev/docs/cli/#installation), to interact with `Tekton Pipelines` using the command line interface.
+8. [Knative CLI](https://knative.dev/docs/install/client/install-kn), to interact with `Knative` using the command line interface.
 
 ## Getting to Know Kaniko
 
@@ -89,7 +101,7 @@ This tutorial relies on the following Tekton concepts to implement the CI part:
 
 ### Tasks
 
-A Task is a collection of Steps that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create image, push to Docker registry, etc. To add Steps to a Task you define a steps field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
+A Tekton Task is a collection of Steps that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create image, push to Docker registry, etc. To add Steps to a Task you define a steps field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
 
 For each task, Tekton creates a Kubernetes Pod in your cluster to run the steps. Then, each step runs in a docker container, thus it must reference a docker image. The container you choose depends on what your step does. For example:
 
@@ -105,7 +117,7 @@ Task definitions are composed of (most important are highlighted):
 - [Workspaces](https://tekton.dev/docs/pipelines/tasks/#specifying-workspaces) - used to share data (artifacts) between steps defined in a task.
 - [Results](https://tekton.dev/docs/pipelines/tasks/#emitting-results) - represent a string value emitted by a Task. Results can be passed between Tasks inside a pipeline. Results are also visible to users, and represent important information such as SHA id for a cloned repository (emitted by the [git-clone](https://hub.tekton.dev/tekton/task/git-clone) Task).
 
-Typical `Task` definition looks like below:
+Typical `Tekton Task` definition looks like below:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -155,7 +167,7 @@ Please visit the [official documentation page](https://tekton.dev/docs/pipelines
 
 ### Pipelines
 
-A Tekton pipeline is used to organize your Tekton tasks and orchestrate the CI flow. A Pipeline specifies one or more Tasks in the desired order of execution. You can embed tasks in a pipeline directly, or reference them from external manifest files. By using references, you create task definitions in separate manifest files, and have them reused across different pipelines. This method is encouraged because it avoids code or configuration duplication, and promotes `code reuse` (or configuration reuse). Thus, tasks act as objects (with inputs and outputs) that can be reused (and instantiated) across your pipelines. You can create dedicated pipelines to test, or build and deploy your applications code.
+A Tekton Pipeline is used to organize your Tekton tasks and orchestrate the CI flow. A Pipeline specifies one or more Tasks in the desired order of execution. You can embed tasks in a pipeline directly, or reference them from external manifest files. By using references, you create task definitions in separate manifest files, and have them reused across different pipelines. This method is encouraged because it avoids code or configuration duplication, and promotes `code reuse` (or configuration reuse). Thus, tasks act as objects (with inputs and outputs) that can be reused (and instantiated) across your pipelines. You can create dedicated pipelines to test, or build and deploy your applications code.
 
 Pipeline definitions are composed of (most important are highlighted):
 
@@ -163,7 +175,7 @@ Pipeline definitions are composed of (most important are highlighted):
 - [Resources](https://tekton.dev/docs/pipelines/pipelines/#specifying-resources) - used to specify inputs and outputs for Tasks within a Pipeline.
 - [Workspaces](https://tekton.dev/docs/pipelines/pipelines/#specifying-workspaces) - used to specify a workspace for shared artifacts between Tasks within a Pipeline.
 
-Typical `Pipeline` definition looks like below:
+Typical `Tekton Pipeline` definition looks like below:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -345,41 +357,178 @@ For every serverless application you create, you must define a Knative Service C
 
 Knative can automatically scale down your applications to zero when not in use or idle (for example, when no HTTP traffic is present), which make your applications serverless.
 
-In this blueprint you will use the Knative Serving component to deploy and expose a web application ([2048 game](https://en.wikipedia.org/wiki/2048_(video_game))).
+For more information about Knative and its features, please visit the [official documentation page](https://knative.dev/docs).
+
+In this blueprint you will use the Knative Serving component to deploy and expose a web application ([2048 game](https://en.wikipedia.org/wiki/2048_(video_game))). Then, the Knative Eventing subsystem is used to connect GitHub events source with Tekton Pipelines and Argo CD for automatic triggering of the CI/CD flow.
+
+Next, you will install each software component required by this guide using the DigitalOcean marketplace collection of 1-click apps for Kubernetes.
 
 ## Step 1 - Installing Tekton
 
+Tekton installation is divided in two parts:
+
+1. [Tekton Pipelines](https://github.com/tektoncd/pipeline) - represents the main component of Tekton and provides pipelines support (as well as other core components, such as Tasks).
+2. [Tekton Triggers](https://github.com/tektoncd/triggers) - additional component providing support for triggering pipelines whenever events emitted by various sources (such as GitHub) are detected.
+
+Tekton Pipelines is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/tekton-pipelines) from the DigitalOcean Marketplace. On the other hand, Tekton triggers is not at this time of writing, so it will be installed using `kubectl`.
+
+Next, you will start by provisioning `Tekton Pipelines` on your Kubernetes cluster via the [DigitalOcean Marketplace](https://marketplace.digitalocean.com).
+
 ### Provisioning Tekton Pipelines
+
+To install Tekton Pipelines please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/tekton-pipelines) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
+
+![Tekton Pipelines 1-click App Install](assets/images/tekton_pipelines_1-click_app_install.png)
+
+After finishing the UI wizard, you should see the new application listed in the `Marketplace` tab of your Kubernetes cluster. The output looks similar to:
+
+![Tekton Pipelines 1-click App Listing](assets/images/mp_1-click_apps_listing.png)
+
+Finally, check if the installation was successful by following the [Getting started after deploying Tekton Pipelines](https://marketplace.digitalocean.com/apps/tekton-pipelines) section from the Tekton Pipelines 1-click app documentation page.
+
+Next, you will continue with provisioning `Tekton Triggers` on your Kubernetes cluster using `kubectl`.
 
 ### Provisioning Tekton Triggers
 
+Tekton Triggers is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://tekton.dev/docs/triggers/install/#installing-tekton-triggers-on-your-cluster). Please run below commands to install Tekton Triggers and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.19.1](https://github.com/tektoncd/triggers/releases/tag/v0.19.1)):
+
+```shell
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.19.1/release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.19.1/interceptors.yaml
+```
+
+**Note:**
+
+Tekton Triggers requires Tekton Pipelines to be installed first as a dependency (covered in the [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines) section of this guide). By default it will use the same namespace to create required resources - `tekton-pipelines`.
+
+Next, check if the Tekton Triggers installation was successful:
+
+```shell
+kubectl get pods --namespace tekton-pipelines -l app.kubernetes.io/part-of=tekton-triggers
+```
+
+The output looks similar to:
+
+```text
+NAME                                                 READY   STATUS    RESTARTS   AGE
+tekton-triggers-controller-75b9b7b77d-5nk76          1/1     Running   0          2m
+tekton-triggers-core-interceptors-7769dc7cbc-8hjkn   1/1     Running   0          2m
+tekton-triggers-webhook-79c866dc85-xz64m             1/1     Running   0          2m
+```
+
+All `tekton-triggers` pods should be running and healthy. You can also list installed Tekton components and corresponding version using Tekton CLI:
+
+```shell
+tkn version
+```
+
+The output looks similar to:
+
+```text
+Client version: 0.23.1
+Pipeline version: v0.29.0
+Triggers version: v0.19.1
+```
+
+Next, you will continue with provisioning `Tekton Dashboard` on your Kubernetes cluster using `kubectl`.
+
+### Provisioning Tekton Dashboard
+
+Tekton Dashboard is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://github.com/tektoncd/dashboard/blob/main/docs/install.md). Please run below commands to install Tekton Dahsboard and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.25.0](https://github.com/tektoncd/dashboard/releases/tag/v0.25.0)):
+
+```shell
+kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/previous/v0.25.0/tekton-dashboard-release.yaml
+```
+
+**Note:**
+
+Tekton Dashboard requires Tekton Pipelines to be installed first as a dependency (covered in the [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines) section of this guide). By default it will use the same namespace to create required resources - `tekton-pipelines`.
+
+Next, check if the Tekton Dashboard installation was successful:
+
+```shell
+kubectl get pods --namespace tekton-pipelines -l app.kubernetes.io/part-of=tekton-dashboard
+```
+
+The output looks similar to:
+
+```text
+NAME                                READY   STATUS    RESTARTS   AGE
+tekton-dashboard-56fcdc6756-p848r   1/1     Running   0          5m
+```
+
+All `tekton-dashboard` pods should be running and healthy. You can also list installed Tekton components and corresponding version using Tekton CLI:
+
+```shell
+tkn version
+```
+
+The output looks similar to:
+
+```text
+Client version: 0.23.1
+Pipeline version: v0.29.0
+Triggers version: v0.19.1
+Dashboard version: v0.25.0
+```
+
+Next, you will install Argo CD 1-click app using the DigitalOcean marketplace.
+
 ## Step 2 - Installing Argo CD
+
+Argo CD is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/argo-cd) from the DigitalOcean Marketplace. To install Argo CD please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/argo-cd) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
+
+![Argo CD 1-click App Install](https://link)
+
+After finishing the UI wizard, you should see the new application listed in the `Marketplace` tab of your Kubernetes cluster. The output looks similar to:
+
+![Argo CD 1-click App Listing](https://link)
+
+Finally, check if the installation was successful by following the [Getting started after deploying Argo CD](https://marketplace.digitalocean.com/apps/argo-cd) section from the Argo CD 1-click app documentation page.
+
+Next, you will install `Knative` 1-click app using the DigitalOcean marketplace.
 
 ## Step 3 - Installing Knative
 
-## Step 4 - Setting Up the CI/CD Pipeline using Tekton and Argo
+Knative is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean Marketplace. To install Knative please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
 
-In this part, you will set up a CI/CD Pipeline that builds a Docker image for your custom application using Kaniko, and publishes it to a remote Docker registry. Then, the Tekton pipeline will trigger Argo CD to deploy the application to your Kubernetes cluster. The web application used in this tutorial is a implementation for the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game)).
+![Knative 1-click App Install](assets/images/knative_1-click_app_install.png)
 
-At a high level overview, following major parts are involved:
+After finishing the UI wizard, you should see the new application listed in the `Marketplace` tab of your Kubernetes cluster. The output looks similar to:
 
-1. The CI/CD Pipeline workflow.
-2. CI/CD Pipeline triggering by Git events (e.g. pushing commits).
+![Knative 1-click App Listing](assets/images/mp_1-click_apps_listing.png)
 
-The CI/CD Pipeline workflow is divided into:
+Finally, check if the installation was successful by following the [Getting started after deploying Knative](https://marketplace.digitalocean.com/apps/knative) section from the Knative 1-click app documentation page.
 
-1. Retrieve the source code.
-2. Build and push the source code into a Docker image.
-3. Push the image to the specified Docker registry.
-4. Trigger Argo CD to deploy application in your Kubernetes cluster.
+**Important note:**
 
-Configuring the CI/CD pipeline to respond to Git events is divided into:
+The Knative 1-click app installs both `Knative Serving` and `Eventing` components in your DOKS cluster.
 
-1. Set up an `EventListener` that accepts and processes GitHub push events.
-2. Set up a `TriggerTemplate` that instantiates a `PipelineResource` and executes a `PipelineRun` and its associated `TaskRuns` when the EventListener detects the push event from a GitHub repository.
-3. Set up a `TriggerBinding` to populate the `TriggerTemplate` input parameters with data extracted from the GitHub event.
+Next, you will configure and then test a CI/CD pipeline for a sample application (the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game))), using Tekton Pipelines and Argo CD. You will also learn how to automatically trigger the pipeline on GitHub events (e.g. when pushing commits), using the Tekton Triggers component.
 
-Below diagram illustrates the CI/CD process:
+## Step 4 - Setting Up Your First CI/CD Pipeline Using Tekton and Argo
+
+In this part, you will set up a Tekton CI Pipeline that builds a Docker image for your custom application using Kaniko, and publishes it to a remote Docker registry. Then, the Tekton pipeline will trigger Argo CD to deploy the application to your Kubernetes cluster. The web application used in this tutorial is a implementation for the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game)).
+
+At a high level overview, the following steps are involved:
+
+1. Implementing the CI/CD Pipeline workflow using Tekton and Argo CD.
+2. Configuring Tekton Triggers for automatic triggering of the CI/CD Pipeline by Git events (e.g. pushing commits).
+
+Next, the CI/CD implementation part is comprised of:
+
+1. Fetching sample application source code from Git.
+2. Build application code and store the resulting artifact(s) as well as dependencies in a Docker image.
+3. Push the sample application image to the specified Docker registry.
+4. Trigger Argo CD to deploy the sample application in your Kubernetes cluster.
+
+Finally, configuring the CI/CD pipeline to trigger on Git events is comprised of:
+
+1. Setting up an `EventListener` that accepts and processes GitHub push events.
+2. Setting up a `TriggerTemplate` that instantiates a `PipelineResource` and executes a `PipelineRun` and its associated `TaskRuns` when the `EventListener` detects the `push event` from your `GitHub` repository.
+3. Setting up a `TriggerBinding` resource to populate the `TriggerTemplate` input parameters with data extracted from the GitHub event.
+
+Below diagram illustrates the CI/CD process implemented using Tekton and Argo:
 
 ![Tekton Pipeline Overview](assets/images/tekton_pipeline_overview.png)
 

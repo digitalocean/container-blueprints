@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-pat
+type: Opaque
+stringData:
+  secretToken: tekton_ci
+  accessToken: <YOUR_GITHUB_PERSONAL_ACCESS_TOKEN_VALUE_HERE>

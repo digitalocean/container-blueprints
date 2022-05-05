@@ -1,0 +1,8 @@
+apiVersion: operator.knative.dev/v1alpha1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+spec:
+  additionalManifests:
+    - URL: https://github.com/knative/net-certmanager/releases/download/knative-v1.4.0/release.yaml

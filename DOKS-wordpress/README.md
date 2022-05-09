@@ -17,6 +17,8 @@ You will be using an external MySQL server in order to abstract the database com
 - [Prerequisites](#prerequisites)
 - [Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)](#setting-up-a-digitalocean-managed-kubernetes-cluster-doks)
 - [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database)
+- [Introduction to the OpenEBS Dynamic NFS Provisioner](#introduction-to-the-openebs-dynamic-nfs-provisioner)
+  - [Installing and configuring the OpenEBS Dynamic NFS Provisioner](#installing-and-configuring-openebs-dynamic-nfs-provisioner)
 - [Installing WordPress](#installing-wordpress)
   - [Deploying the Helm Chart](#deploying-the-helm-chart)
   - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
@@ -150,6 +152,246 @@ Finally, you need to setup the trusted sources between your MySQL database and y
 
 Please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
 
+## Introduction to the OpenEBS Dynamic NFS Provisioner
+
+When we deploy a stateful application in a Kubernetes cluster, we create and access DigitalOcean Block Storage Volumes by creating a PersistentVolumeClaim as part of our deploymment using the default StorageClass named do-block-storage.
+DigitalOcean Block Storage Volumes are mounted as read-write by a single node (RWO). Additional nodes cannot mount the same volume. The data content of a PersistentVolume can not be accessed by multiple Pods simultaneously.
+
+Horizontal pod autoscaling (HPA) policies are used to scale the WordPress Pods in a dynamically StatefulSet. As a result, Kubernetes schedules different Pods with the same data content as the other replicas. In this specific case, not only is the same content served by WordPress replicas, any update of the content, such as new images, user uploaded files, or plugins, need to be synchronously made available to the other replicas.
+
+This is why WordPress requires a volume that can be mounted as read-write by many nodes (RWX), in our case, WordPress replica Pods.
+
+NFS (Network File System) is a commonly used solution to provide RWX volumes on block storage. This server offers a PersistentVolumeClaim (PVC) in RWX mode so that multiple web applications can access the data in a shared fashion. In many cases, cloud block storage providers or OpenEBS volumes are used as persistent backend storage for these NFS servers to provide a scalable and manageable RWX shared storage solution.
+
+OpenEBS Dynamic NFS Provisioner allows users to create an NFS PV that sets up a new Kernel NFS instance for each PV on top of the user's choice of backend storage.
+
+**Note:**
+
+Please visit [OpenEBS](https://openebs.io/) for more details.
+
+### Installing and configuring the OpenEBS Dynamic NFS Provisioner
+
+In this section, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). For our purposes we will be installing and configuring only the dynamic nfs provisioner since that's what we need.
+
+First, add the `Helm` repository:
+
+```console
+helm repo add openebs-nfs https://openebs.github.io/dynamic-nfs-provisioner
+
+helm repo update
+```
+
+Next, create a YAML file `openEBS-nfs-provisioner.yaml` to override the default helm values:
+
+```yaml
+# Default values for nfspv-provisioner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+rbac:
+  # rbac.create: `true` if rbac resources should be created
+  create: true
+  # rbac.pspEnabled: `true` if PodSecurityPolicy resources should be created
+  pspEnabled: false
+
+podSecurityContext: {}
+# fsGroup: 2000
+
+imagePullSecrets:
+# - name: image-pull-secret
+
+fullnameOverride: ""
+nameOverride: ""
+
+nfsProvisioner:
+  name: nfs-provisioner
+  enabled: true
+  annotations: {}
+  podLabels:
+    name: openebs-nfs-provisioner
+  image:
+    # Make sure that registry name end with a '/'.
+    # For example : quay.io/ is a correct value here and quay.io is incorrect
+    registry:
+    repository: openebs/provisioner-nfs
+    tag:
+    pullPolicy: IfNotPresent
+  enableLeaderElection: "true"
+  # Specify image name of nfs-server-alpine used for creating nfs server deployment
+  # If not mentioned, default value openebs/nfs-server-alpine:tag will be used where
+  # the tag will be the same as a provisioner-nfs image tag
+  nfsServerAlpineImage:
+    registry:
+    repository: openebs/nfs-server-alpine
+    tag:
+  resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  #   ## Normal cases CPU and memory usage are around ~10 millicores and
+  #   ## memory usage is around ~16Mb(after provisioing 70 volumes)
+  #   requests:
+  #     cpu: 50m
+  #     memory: 50M
+  #   ## During provisioning(large no.of pvcs at a time) time CPU and memory usage
+  #   ## are around ~67 millicores(6.7% of cpu) and memory usage is around ~34Mb
+  #   limits:
+  #     cpu: 200m
+  #     memory: 200Mi
+  # If set to false, containers created by the nfs provisioner will run without extra privileges.
+  privileged: true
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  healthCheck:
+    initialDelaySeconds: 30
+    periodSeconds: 60
+  # namespace in which nfs server objects should be created
+  # By default, nfs provisioner will create these resources in nfs provisioner's namespace
+  # nfsServerNamespace: openebs
+  #
+  # nfsServerNodeAffinity defines the node affinity rules to place NFS Server
+  # instance. It accepts affinity rules in multiple ways:
+  # - If NFS Server needs to be placed on storage nodes as well as only in
+  #   zone-1 & zone-2 then value can be: "kubernetes.io/zone:[zone-1,zone-2],kubernetes.io/storage-node".
+  # - If NFS Server needs to be placed only on storage nodes & nfs nodes then
+  #   value can be: "kubernetes.io/storage-node,kubernetes.io/nfs-node"
+  # nfsServerNodeAffinity: "kubernetes.io/storage-node,kubernetes.io/nfs-node"
+  #
+  # nfsHookConfigMap represent the ConfigMap name to be used for hook configuration.
+  # By default, nfsHookConfigMap is set to empty.
+  # If nfsHookConfigMap is set then chart will mount the configmap using volume, named `hook-config`
+  nfsHookConfigMap: ""
+
+nfsStorageClass:
+  name: openebs-kernel-nfs
+  reclaimPolicy: Delete
+  nfsServerType: kernel
+  isDefaultClass: false
+  backendStorageClass: "do-block-storage"
+  # The customServerConfig key passes a custom /etc/exports configuration to
+  # the NFS servers created using this StorageClass.
+  # The configuration settings are not validated, and can lead to security
+  # vulnerability.
+  # USING THIS IS NOT RECOMMENDED
+  customServerConfig: ""
+  # leaseTime defines the renewal period(in seconds) for client state
+  leaseTime:
+  # graceTime defines the recovery period(in seconds) to reclaim locks
+  # setting graceTime and leaseTime lower will reduce the io pause time during nfs server restart
+  graceTime:
+  # filePermissions defines the file ownership and mode specifications
+  # for the NFS server's shared filesystem volume.
+  # File permission changes are applied recursively if the root of the
+  # volume's filesystem does not match the specified value.
+  # For more information: https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/docs/tutorial/file-permissions.md
+  filePermissions: {}
+  # The UID value is used to set the user-owner of NFS shared directory. Only valid
+  # UIDs are accepted.
+  # The ownership change is carried out recursively down the directory tree.
+  #  UID: ""
+  # The GID value is used to set the group-owner of NFS shared directory. Only valid
+  # GIDs are accepted.
+  # The ownership change is carried out recursively down the directory tree.
+  #  GID: ""
+  # The mode value is used to set the file mode of NFS shared directory. Both octals (e.g. 0744)
+  # and incremental/decremental (e.g. "u+r", "o+rw") values are accepted.
+  # The file mode change is carried out recursively down the directory tree.
+  #  mode: ""
+
+  # nfsServerResources defines the NFS server resource requests and limits
+  # Usually, below request and limits are good enough for NFS Server to work
+  # seamlessly(IOs will be taken care by kerner space process i.e nfsd).
+  nfsServerResources: {}
+  #  requests:
+  #    memory: 50Mi
+  #    cpu: 50m
+  #  limits:
+  #    memory: 100Mi
+  #    cpu: 100m
+
+nfsServer:
+  useClusterIP: "true"
+  imagePullSecret: ""
+
+analytics:
+  enabled: "true"
+```
+
+**Note:**
+
+Most of the overrides are self-explanatory and can be customized. Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for more details.
+
+Finally, install the chart using Helm:
+
+```console
+helm install openebs-nfs openebs-nfs/nfs-provisioner --version 0.9.0 \
+  --namespace openebs \
+  --create-namespace \
+  -f "openEBS-nfs-provisioner.yaml"
+```
+
+**Note:**
+A specific version for the Helm chart is used. In this case 0.9.0 was picked, which maps to the 0.9.0 version of the application. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
+
+You can verify Nginx deployment status via:
+
+```console
+helm ls -n openebs
+```
+
+The output looks similar to (notice that the STATUS column value is deployed):
+
+```text
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+openebs-nfs     openebs         1               2022-05-09 10:58:14.388721 +0300 EEST   deployed        nfs-provisioner-0.9.0   0.9.0  
+```
+
+NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Here, we will use the default Storage Class (do-block-storage) of the DigitalOcean Kubernetes cluster as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner. The following steps create an OpenEBS NFS provisioner supported Storage Class.
+
+Create a YAML file `sc-rwx.yaml`:
+
+```yaml
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rwx-storage
+  annotations: 
+    openebs.io/cas-type: nsfrwx
+    cas.openebs.io/config: |
+      - name: NSFServerType
+        value: "kernel"
+      - name: BackendStorageClass
+        value: "do-block-storage"
+provisioner: openebs.io/nfsrwx
+reclaimPolicy: Delete
+```
+
+Apply via kubectl:
+
+```console
+kubectl apply -f sc-rwx.yaml
+```
+
+Verify that the StorageClass was created by executing the command below:
+
+```console
+kubectl get sc
+```
+
+Now, we have created the StorageClass named rwx-storage to dinamically privision shared volume on top of DigitalOcean Block Storage Volume.
+
 ## Installing WordPress
 
 ### Deploying the Helm Chart
@@ -179,9 +421,14 @@ service:
 # Enable persistence using Persistent Volume Claims
 persistence:
   enabled: true
-  storageClassName: do-block-storage
-  accessModes: ["ReadWriteOnce"]
+  storageClassName: rwx-storage
+  accessModes: ["ReadWriteMany"]
   size: 5Gi
+
+volumePermissions:
+  enabled: true
+
+# replicaCount: 3
 
 # Prometheus Exporter / Metrics configuration
 metrics:
@@ -266,6 +513,84 @@ NAME                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/wordpress-6f55c9ffbd   1         1         1       23h
 ```
 
+Verify the PVSs created under the wordpress namespace and associated OpenEBS volume under the openebs namespace:
+
+```console
+kubectl get pvc -A
+```
+
+The ouput looks similar to (notice the `RWX` access mode for the wordpress PVC and it's storage class created earlier when configuring the openEBS NFS provisioner):
+
+```text
+NAMESPACE   NAME                                           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE
+openebs     nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   Bound    pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            do-block-storage   20m
+wordpress   wordpress                                      Bound    pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            rwx-storage        20m
+```
+
+Verify the associated PVs created in the cluster:
+
+```console
+kubectl get pv
+```
+
+The ouput looks similar to:
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                                  STORAGECLASS       REASON   AGE
+pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            Delete           Bound    wordpress/wordpress                                    rwx-storage                 23m
+pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   do-block-storage            23m
+
+We can also create additional pod replicas to demonstrate the power of the NFS provisioner by opening the `values.yaml` file and uncommenting the: `replicaCount: 3` line (this can be set to as many replicas as you wish).
+Apply the changes by running:
+
+```console
+helm upgrade wordpress bitnami/wordpress \
+    --atomic \
+    --create-namespace \
+    --install \
+    --namespace wordpress \
+    --version 13.1.4 \
+    --values values.yml
+```
+
+Verify that the changes are applied:
+
+```console
+kubectl get all -n wordpress
+```
+
+The output looks similar to:
+
+```text
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/wordpress-5f5f4cf94c-d7mqb   1/1     Running   0          2m58s
+pod/wordpress-5f5f4cf94c-qkxdq   1/1     Running   0          3m38s
+pod/wordpress-5f5f4cf94c-zf46h   1/1     Running   0          87s
+
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+service/wordpress   ClusterIP   10.245.151.58   <none>        80/TCP,443/TCP   35m
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/wordpress   3/3     3            3           35m
+
+NAME                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/wordpress-5f5f4cf94c   3         3         3       35m
+replicaset.apps/wordpress-798789f994   0         0         0       19m
+```
+
+We can also check where the pods are deployed:
+
+```console
+kubectl get all -n wordpress -o wide
+```
+
+The output looks similar to (notice that the pods are deployed in different nodes). The pods access the same Shared NFS Volume created earlier due to it's `RWX` or `ReadWriteMany` access mode.
+
+```text
+NAME                             READY   STATUS    RESTARTS   AGE     IP             NODE            NOMINATED NODE   READINESS GATES
+pod/wordpress-5f5f4cf94c-d7mqb   1/1     Running   0          4m7s    10.244.0.206   basicnp-cwxop   <none>           <none>
+pod/wordpress-5f5f4cf94c-qkxdq   1/1     Running   0          4m47s   10.244.1.84    basicnp-cwxol   <none>           <none>
+pod/wordpress-5f5f4cf94c-zf46h   1/1     Running   0          2m36s   10.244.0.194   basicnp-cwxop   <none>           <none>
+```
+
 ### Securing Traffic using Let's Encrypt Certificates
 
 The Bitnami WordPress Helm chart comes with built-in support for Ingress routes and certificate management through [cert-manager](https://github.com/jetstack/cert-manager). This makes it easy to configure TLS support using certificates from a variety of certificate providers, including [Let's Encrypt](https://letsencrypt.org/).
@@ -285,7 +610,7 @@ Next, install the Nginx Ingress Controller using Helm:
 ```console
 helm install ingress-nginx ingress-nginx/ingress-nginx --version 4.0.13 \
   --namespace ingress-nginx \
-  --create-namespace \
+  --create-namespace
 ```
 
 Finally, check if the Helm installation was successful by running command below:
@@ -316,7 +641,8 @@ Next, install Cert-Manager using Helm:
 ```console
 helm install cert-manager jetstack/cert-manager --version 1.6.1 \
   --namespace cert-manager \
-  --create-namespace
+  --create-namespace \
+  --set installCRDs=true
 ```
 
 Finally, check if Cert-Manager installation was successful by running below command:
@@ -372,7 +698,7 @@ Apply via kubectl:
 kubectl apply -f letsencrypt-issuer.yaml
 ```
 
-To secure the traffic for WordPress, open the helm file `(value.yml)` created earlier and add the following helm values at the end:
+To secure the traffic for WordPress, open the helm file `(values.yml)` created earlier and add the following helm values at the end:
 
 ```yaml
 # Enable ingress record generation for WordPress

@@ -5,9 +5,14 @@ service:
 # Enable persistence using Persistent Volume Claims
 persistence:
   enabled: true
-  storageClassName: do-block-storage
-  accessModes: ["ReadWriteOnce"]
+  storageClass: rwx-storage
+  accessModes: ["ReadWriteMany"]
   size: 5Gi
+
+volumePermissions:
+  enabled: true
+
+replicaCount: 3
 
 # Prometheus Exporter / Metrics configuration
 metrics:
@@ -34,17 +39,3 @@ externalDatabase:
 # Disabling MariaDB
 mariadb:
   enabled: false
-
-# Enable ingress record generation for WordPress
-ingress:
-  enabled: true
-  certManager: true
-  tls: false
-  hostname: <YOUR_WORDPRESS_DOMAIN_HERE>
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  extraTls:
-  - hosts:
-      - <YOUR_WORDPRESS_DOMAIN_HERE>
-    secretName: wordpress.local-tls

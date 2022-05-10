@@ -390,6 +390,15 @@ Verify that the StorageClass was created by executing the command below:
 kubectl get sc
 ```
 
+The ouput looks similar to:
+
+```text
+NAME                         PROVISIONER                 RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immediate           true                   107m
+openebs-kernel-nfs           openebs.io/nfsrwx           Delete          Immediate           false                  84m
+rwx-storage                  openebs.io/nfsrwx           Delete          Immediate           false                  84m
+```
+
 Now, we have created the StorageClass named rwx-storage to dinamically privision shared volume on top of DigitalOcean Block Storage Volume.
 
 ## Installing WordPress
@@ -534,9 +543,12 @@ kubectl get pv
 ```
 
 The ouput looks similar to:
+
+```text
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                                  STORAGECLASS       REASON   AGE
 pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            Delete           Bound    wordpress/wordpress                                    rwx-storage                 23m
 pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   do-block-storage            23m
+```
 
 We can also create additional pod replicas to demonstrate the power of the NFS provisioner by opening the `values.yaml` file and uncommenting the: `replicaCount: 3` line (this can be set to as many replicas as you wish).
 Apply the changes by running:

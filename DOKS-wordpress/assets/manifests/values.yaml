@@ -12,11 +12,9 @@ persistence:
 volumePermissions:
   enabled: true
 
-replicaCount: 3
-
 # Prometheus Exporter / Metrics configuration
 metrics:
-  enabled: false
+  enabled: true
 
 # Level of auto-updates to allow. Allowed values: major, minor or none.
 wordpressAutoUpdateLevel: minor

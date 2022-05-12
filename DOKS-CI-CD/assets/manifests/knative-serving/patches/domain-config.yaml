@@ -5,5 +5,7 @@ metadata:
   namespace: knative-serving
 spec:
   config:
+    # Instruct Knative Serving to use a custom domain you own
+    # Make sure to replace `starter-kit.online` with your own domain name
     domain:
       starter-kit.online: ""

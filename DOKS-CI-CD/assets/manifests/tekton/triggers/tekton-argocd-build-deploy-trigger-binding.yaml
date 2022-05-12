@@ -1,0 +1,13 @@
+# A `TriggerBinding` specifies what fields you're interested in from the incoming GitHub event
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: tekton-argocd-build-deploy-trigger-binding
+spec:
+  # Defines what fields to extract from the GitHub event payload and parameter association
+  params:
+    - name: git-url
+      value: $(body.repository.url)
+    - name: git-revision
+      value: $(body.head_commit.id)

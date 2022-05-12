@@ -4,5 +4,6 @@ metadata:
   name: knative-serving
   namespace: knative-serving
 spec:
+  # Instruct Knative Serving Operator to install the additional `net-certmanager` component
   additionalManifests:
     - URL: https://github.com/knative/net-certmanager/releases/download/knative-v1.4.0/release.yaml

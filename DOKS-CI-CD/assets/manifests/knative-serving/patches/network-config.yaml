@@ -6,5 +6,6 @@ metadata:
 spec:
   config:
     network:
+      # Instruct Knative Serving to enable auto TLS
       auto-tls: Enabled
       http-protocol: Enabled

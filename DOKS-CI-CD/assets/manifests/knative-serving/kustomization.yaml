@@ -1,9 +1,19 @@
+## Knative Serving Kustomization
+#
+# This kustomization configures Knative Serving from the DigitalOcean Marketplace repo to:
+#   1. Install the net-certmanager component (`patches/net-certmanager-install.yaml`)
+#   2. Configures Knative Serving to use the `kn-letsencrypt-http01-issuer` cluster issuer (`patches/certmanager-config.yaml`)
+#   3. Configures Knative Serving to use a custom domain (`patches/domain-config.yaml`)
+#   4. Configures Knative Serving for auto TLS (`patches/network-config.yaml`)
+##
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/knative/assets/manifests/knative-serving.yaml
+  - resources/kn-cluster-issuer.yaml # creates the `kn-letsencrypt-http01-issuer` cluster issuer
 patches:
-  - certmanager-install-patch.yaml
-  - certmanager-config-patch.yaml
-  - domain-config-patch.yaml
-  - network-config-patch.yaml
+  - patches/net-certmanager-install.yaml
+  - patches/certmanager-config.yaml
+  - patches/domain-config.yaml
+  - patches/network-config.yaml

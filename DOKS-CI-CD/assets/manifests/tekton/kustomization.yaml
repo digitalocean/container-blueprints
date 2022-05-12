@@ -1,0 +1,56 @@
+## Tekton Kustomization
+#
+# This kustomization is responsible with:
+#   - Configuring and installing required Tekton resources (such as Tasks, Pipelines, etc) for the CI/CD flow
+#   - Tekton integration with Knative Eventing to trigger Pipelines via GitHub webhooks
+#   - Generating required configmaps and secrets for the CI/CD Tekton pipeline to work
+##
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Make sure all resources used in this tutorial go in a dedicated namespace
+# Also specific labels and annotations are added for identification
+namespace: doks-ci-cd
+commonAnnotations:
+  provider: container-blueprints
+commonLabels:
+  pipeline: tekton
+  deploy: argocd
+
+resources:
+  - https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.6/git-clone.yaml
+  - https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
+  - https://raw.githubusercontent.com/tektoncd/catalog/main/task/argocd-task-sync-and-wait/0.2/argocd-task-sync-and-wait.yaml
+  - pipelines/tekton-argocd-build-deploy.yaml
+  - triggers/rbac.yaml
+  - triggers/tekton-argocd-build-deploy-trigger-template.yaml
+  - triggers/tekton-argocd-build-deploy-trigger-binding.yaml
+  - triggers/tekton-argocd-build-deploy-event-listener.yaml
+  # - eventing/tekton-ci-channel.yaml
+  - eventing/tekton-ci-cd-github-source.yaml
+  # - eventing/tekton-ci-channel-subscribers.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  # Contains the Argo CD server endpoint
+  # Used by the `sync-application` Task to sync the Argo CD application
+  - name: argocd-env-configmap
+    env: configs/argocd/server.env
+
+secretGenerator:
+  # Creates a secret containing Docker registry credentials
+  # Used by the `build-docker-image` Task to push application image to the registry
+  - name: registry-tekton-ci
+    files:
+      - configs/docker/config.json
+  # Contains authentication credentials for the Argo CD server
+  # Used by the `sync-application` Task to sync the Argo CD application
+  - name: argocd-env-secret
+    env: configs/argocd/auth.env
+  # Contains the GitHub personal access token (or PAT)
+  # Used by the `GitHubSource` CRD to access the GitHub API and manage webhooks
+  - name: tekton-ci-github-pat
+    env: configs/github/pat.env

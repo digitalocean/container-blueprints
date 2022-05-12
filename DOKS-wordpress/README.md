@@ -170,19 +170,17 @@ do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immedia
 
 DigitalOcean Block Storage Volumes are mounted as read-write by a single node (RWO). Additional nodes cannot mount the same volume. The data content of a PersistentVolume can not be accessed by multiple Pods simultaneously.
 
-Horizontal pod autoscaling (HPA) policies are used to scale the WordPress Pods in a dynamically StatefulSet.
-
-This is why WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) that can be mounted as read-write by many nodes (RWX), in your case, WordPress replica Pods.
+Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamically StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX)
 
 NFS (Network File System) is a commonly used solution to provide RWX volumes on block storage. This server offers a PersistentVolumeClaim (PVC) in RWX mode so that multiple web applications can access the data in a shared fashion.
 
-OpenEBS Dynamic NFS Provisioner allows users to create an NFS PV that sets up a new Kernel NFS instance for each PV on top of the user's choice of backend storage.
+OpenEBS Dynamic NFS Provisioner allows users to create a NFS PV that sets up a new Kernel NFS instance for each PV on top of the user's choice of backend storage.
 
 **Note:**
 
 Please visit [OpenEBS](https://openebs.io/) for more details.
 
-Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). For your purposes you will be installing and configuring only the dynamic nfs provisioner since that's what you need.
+Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). You will be installing and configuring only the dynamic nfs provisioner, since Wordpress requires it.
 
 First, clone the `container-blueprints` repository and change directory to your local copy and the `DOKS-wordpress` folder in it:
 
@@ -210,7 +208,7 @@ nfsStorageClass:
 
 **Note:**
 
-The override is self-explanatory and can be customized. Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for the full values.yaml file and more details.
+The override for the current use case is that you need change the defualt value of the `backendStorageClass` to [do-block-storage](https://www.digitalocean.com/products/block-storage). Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for the full values.yaml file and more details.
 
 Finally, install the chart using Helm:
 
@@ -237,7 +235,7 @@ NAME            NAMESPACE       REVISION        UPDATED                         
 openebs-nfs     openebs         1               2022-05-09 10:58:14.388721 +0300 EEST   deployed        nfs-provisioner-0.9.0   0.9.0  
 ```
 
-NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Here, you will use the default Storage Class (do-block-storage) of the DigitalOcean Kubernetes cluster as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner. The following steps create an OpenEBS NFS provisioner supported Storage Class.
+NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Next, you will configure the default Kubernetes Storage Class (do-block-storage) provided by DigitalOcean as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner. The following steps create an OpenEBS NFS provisioner supported Storage Class.
 
 Create a YAML file `sc-rwx.yaml`:
 
@@ -260,7 +258,7 @@ reclaimPolicy: Delete
 
 Explanations for the above configuration:
 
-- `provisioner` - provisioner that determines what volume plugin is used for provisioning PVs (e.g. `openebs.io/nfsrwx`)
+- `provisioner` - defines what storage class is used for provisioning PVs (e.g. openebs.io/nfsrwx)
 - `reclaimPolicy` - dynamically provisioned volumes are automatically deleted when a user deletes the corresponding PersistentVolumeClaim
 
 For more information please about openEBS please visit the [OpenEBS Documentation](https://openebs.io/docs).
@@ -286,7 +284,7 @@ openebs-kernel-nfs           openebs.io/nfsrwx           Delete          Immedia
 rwx-storage                  openebs.io/nfsrwx           Delete          Immediate           false                  84m
 ```
 
-Now, you have created the StorageClass named rwx-storage to dinamically privision shared volume on top of DigitalOcean Block Storage Volume.
+Now, you have a new StorageClass named rwx-storage to dynamically provision shared volumes on top of DigitalOcean Block Storage.
 
 ## Installing WordPress
 
@@ -407,7 +405,7 @@ NAME                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/wordpress-6f55c9ffbd   1         1         1       23h
 ```
 
-Verify the PVCs created under the wordpress namespace and associated OpenEBS volume under the openebs namespace:
+Verify the PVCs created under the wordpress namespace, and associated OpenEBS volume under the openebs namespace:
 
 ```console
 kubectl get pvc -A
@@ -435,7 +433,7 @@ pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            Delete     
 pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   do-block-storage            23m
 ```
 
-You can also create additional pod replicas to demonstrate the capabilities of the NFS provisioner by opening the `values.yaml` file and adding the: `replicaCount` line set to the number of desired replicas.
+You can also create additional pods to demonstrate the capabilities of the NFS provisioner by opening the `(values.yaml)` file, and add the `replicaCount` line set to the number of desired replicas.
 
 ```yaml
 ...
@@ -443,7 +441,7 @@ replicaCount: 3
 ...
 ```
 
-Apply the changes by running:
+Apply changes using the helm upgrade command:
 
 ```console
 helm upgrade wordpress bitnami/wordpress \
@@ -486,7 +484,7 @@ We can also check where the pods are deployed:
 kubectl get all -n wordpress -o wide
 ```
 
-The output looks similar to (notice that the pods are deployed in different nodes):
+The output looks similar to (notice that the pods are deployed on different nodes):
 
 ```text
 NAME                             READY   STATUS    RESTARTS   AGE     IP             NODE            NOMINATED NODE   READINESS GATES
@@ -602,7 +600,7 @@ Apply via kubectl:
 kubectl apply -f assets/manifests/letsencrypt-issuer.yaml
 ```
 
-To secure WordPress traffic, open the helm values file `(values.yaml)` created earlier, and add the following settings at the end:
+To secure WordPress traffic, open the helm `(values.yaml)` file created earlier, and add the following settings at the end:
 
 ```yaml
 # Enable ingress record generation for WordPress

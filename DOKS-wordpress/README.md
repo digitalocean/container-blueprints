@@ -22,6 +22,7 @@ You will be using an external MySQL server in order to abstract the database com
   - [Deploying the Helm Chart](#deploying-the-helm-chart)
   - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
     - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
+    - [Configuring DNS for Nginx Ingress Controller](#configuring-dns-for-nginx-ingress-controller)
     - [Installing Cert-Manager](#installing-cert-manager)
     - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
   - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
@@ -37,6 +38,7 @@ To complete this tutorial, you will need:
 2. [Doctl](https://github.com/digitalocean/doctl/releases) CLI, for `DigitalOcean` API interaction.
 3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction.
 4. Basic knowledge on how to run and operate `DOKS` clusters. You can learn more [here](https://docs.digitalocean.com/products/kubernetes).
+5. A domain name from [GoDaddy](https://uk.godaddy.com), [Cloudflare](https://uk.godaddy.com) etc, to configure `DNS` within your `DigitalOcean` account
 
 ## Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)
 
@@ -54,7 +56,7 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 **Notes:**
 
-- The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
+- The recommended worker nodes for Wordpress is 2 for pod replication on multiple nodes and minimizing the impact of node failure. The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
 
 - Please visit [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS) for more details.
 
@@ -62,9 +64,13 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 In this section, you will create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because your WordPress installation will live on a separate server inside the Kubernetes cluster.
 
-**Note:**
+**Notes:**
 
-By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Installing WordPress](#installing-wordpress).
+- By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. Before deciding on using a managed database or the default MariaDB install of the Helm chart consider the following:
+  - With a managed database service you only need to decide on the initial size of the database server and you are good to go. Another appeal is the automation side. Performing updates, running migrations, and creating backups are done automatically. Please see this [article](https://www.digitalocean.com/community/tutorials/understanding-managed-databases) for more information on managed databases. Using a managed database comes at an extra cost.
+  - With the MariaDB default Helm chart installation it is important to note that DB pods (the database application containers) are transient, so they can restart or fail more often. Specific administrative tasks like backups or scaling require more manual work and setup to achieve those goals. Using the MariaDB install will not create any additional costs.
+
+If you don't want to use an external database, please skip to the next chapter - [Installing and configuring the OpenEBS Dynamic NFS Provisioner](#installing-and-configuring-the-openebs-dynamic-nfs-provisioner).
 
 First, create the MySQL managed database:
 
@@ -515,7 +521,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx --version 4.0.13 \
   --create-namespace
 ```
 
-Finally, check if the Helm installation was successful by running command below:
+Next, check if the Helm installation was successful by running command below:
 
 ```console
 helm ls -n ingress-nginx
@@ -526,6 +532,84 @@ The output looks similar to the following (notice the `STATUS` column which has 
 ```text
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
 ingress-nginx   ingress-nginx   1               2022-02-14 12:04:06.670028 +0200 EET    deployed        ingress-nginx-4.0.13    1.1.0
+```
+
+Finally, list all load balancer resources from your `DigitalOcean` account, and print the `IP`, `ID`, `Name` and `Status`:
+
+```shell
+doctl compute load-balancer list --format IP,ID,Name,Status
+```
+
+The output looks similar to (should contain the new `load balancer` resource created for `Nginx Ingress Controller` in a healthy state):
+
+```text
+IP                 ID                                      Name                                Status
+45.55.107.209    0471a318-a98d-49e3-aaa1-ccd855831447    acdc25c5cfd404fd68cd103be95af8ae    active
+```
+
+### Configuring DNS for Nginx Ingress Controller
+
+In this step, you will configure `DNS` within your `DigitalOcean` account, using a `domain` that you own. Then, you will create the domain `A` record for wordpress.
+
+First, please issue the below command to create a new `domain` (`bond-0.co`, in this example):
+
+```shell
+doctl compute domain create bond-0.co
+```
+
+**Note:**
+
+**YOU NEED TO ENSURE THAT YOUR DOMAIN REGISTRAR IS CONFIGURED TO POINT TO DIGITALOCEAN NAME SERVERS**. More information on how to do that is available [here](https://www.digitalocean.com/community/tutorials/how-to-point-to-digitalocean-nameservers-from-common-domain-registrars).
+
+Next, you will add the required `A` record for the wordpress application. First, you need to identify the load balancer `external IP` created by the `nginx` deployment:
+
+Next, you will add required `A` records for the `hosts` you created earlier. First, you need to identify the load balancer `external IP` created by the `nginx` deployment:
+
+```shell
+kubectl get svc -n ingress-nginx
+```
+
+The output looks similar to (notice the `EXTERNAL-IP` column value for the `ingress-nginx-controller` service):
+
+```text
+NAME                                 TYPE           CLUSTER-IP     EXTERNAL-IP       PORT(S)                      AGE
+ingress-nginx-controller             LoadBalancer   10.245.109.87   45.55.107.209   80:32667/TCP,443:31663/TCP   25h
+ingress-nginx-controller-admission   ClusterIP      10.245.90.207   <none>          443/TCP                      25h
+```
+
+Then, add the records (please replace the `<>` placeholders accordingly). You can change the `TTL` value as per your requirement:
+
+```shell
+doctl compute domain records create bond-0.co --record-type "A" --record-name "wordpress" --record-data "<YOUR_LB_IP_ADDRESS>" --record-ttl "30"
+```
+
+**Hint:**
+
+If you have only `one load balancer` in your account, then please use the following snippet:
+
+```shell
+LOAD_BALANCER_IP=$(doctl compute load-balancer list --format IP --no-header)
+
+doctl compute domain records create bond-0.co --record-type "A" --record-name "wordpress" --record-data "$LOAD_BALANCER_IP" --record-ttl "30"
+```
+
+**Observation and results:**
+
+List the available records for the `bond-0.co` domain:
+
+```shell
+doctl compute domain records list bond-0.co
+```
+
+The output looks similar to the following:
+
+```text
+ID           Type    Name         Data                    Priority    Port    TTL     Weight
+311452740    SOA     @            1800                    0           0       1800    0
+311452742    NS      @            ns1.digitalocean.com    0           0       1800    0
+311452743    NS      @            ns2.digitalocean.com    0           0       1800    0
+311452744    NS      @            ns3.digitalocean.com    0           0       1800    0
+311453305    A       wordpress    45.55.107.209           0           0       30      0
 ```
 
 #### Installing Cert-Manager

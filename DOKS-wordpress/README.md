@@ -369,7 +369,7 @@ helm upgrade wordpress bitnami/wordpress \
     --install \
     --namespace wordpress \
     --version 13.1.4 \
-    --values values.yaml
+    --values assets/manifests/values.yaml
 ```
 
 **Note:**
@@ -456,7 +456,7 @@ helm upgrade wordpress bitnami/wordpress \
     --install \
     --namespace wordpress \
     --version 13.1.4 \
-    --values values.yaml
+    --values assets/manifests/values.yaml
 ```
 
 Verify that the changes are applied. Notice the increased replica count and number of pods:
@@ -710,7 +710,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version 13.1.4 \
     --timeout 10m0s \
-    --values values.yaml
+    --values assets/manifests/values.yaml
 ```
 
 This automatically creates a certificate through cert-manager. You can then verify that you've successfully obtained the certificate by running the following command:
@@ -748,7 +748,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version 13.1.4 \
     --timeout 10m0s \
-    --values values.yaml
+    --values assets/manifests/values.yaml
 ```
 
 Next, port-forward the wordpress service to inspect the available metrics:
@@ -801,7 +801,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version <WORDPRESS_NEW_VERSION> \
     --timeout 10m0s \
-    --values values.yaml
+    --values assets/manifests/values.yaml
 ```
 
 **Note:**

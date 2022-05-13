@@ -8,7 +8,7 @@ spec:
   # Defines what type of GitHub events you're interested
   eventTypes:
     - push
-  ownerAndRepository: <YOUR_GITHUB_NAME_HERE>/tekton-sample-app
+  ownerAndRepository: <YOUR_GITHUB_USER_NAME_HERE>/<YOUR_GITHUB_REPO_HERE>
   accessToken:
     secretKeyRef:
       name: tekton-ci-github-pat

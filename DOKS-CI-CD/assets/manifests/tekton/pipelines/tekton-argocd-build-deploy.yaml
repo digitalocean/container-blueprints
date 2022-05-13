@@ -14,6 +14,9 @@ spec:
     - name: image-name
     - name: path-to-image-context
     - name: path-to-dockerfile
+    - name: k8s-resources-path
+    - name: k8s-dest-server
+    - name: k8s-dest-namespace
   # Shared workspaces used by pipeline tasks
   workspaces:
     - name: git-source
@@ -67,17 +70,46 @@ spec:
         - name: dockerconfig
           workspace: docker-config
     #############################################################################
+    # Task: `create-application`
+    # Role: Tells Argo CD to create a new application (if not present)
+    # Parameters: 
+    #   - `application-name`: the application name to sync
+    #   - `repo-url`: the repository URL hosting the application
+    #   - `resources-path`: path inside the repository for Kubernetes resources
+    #   - `dest-server`: targeted Kubernetes server
+    #   - `dest-namespace`: application target namespace 
+    #   - `flags`: extra flags passed to Argo CD
+    #############################################################################
+    - name: create-application
+      taskRef:
+        name: argocd-task-create-app
+      runAfter:
+        - build-docker-image
+      params:
+        - name: application-name
+          value: $(params.application-name)
+        - name: repo-url
+          value: $(params.git-url)
+        - name: resources-path
+          value: $(params.k8s-resources-path)
+        - name: dest-server
+          value: $(params.k8s-dest-server)
+        - name: dest-namespace
+          value: $(params.k8s-dest-namespace)
+        - name: flags
+          value: --insecure
+    #############################################################################
     # Task: `sync-application`
     # Role: Tells Argo CD to sync and wait for the application to be ready
     # Parameters: 
-    #   - `application-name`: defines the application name to sync
+    #   - `application-name`: application name to sync
     #   - `flags`: extra flags passed to Argo CD
     #############################################################################
     - name: sync-application
       taskRef:
         name: argocd-task-sync-and-wait
       runAfter:
-        - build-docker-image
+        - create-application
       params:
         - name: application-name
           value: $(params.application-name)

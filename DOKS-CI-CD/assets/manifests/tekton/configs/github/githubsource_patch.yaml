@@ -1,0 +1,6 @@
+apiVersion: sources.knative.dev/v1alpha1
+kind: GitHubSource
+metadata:
+  name: tekton-ci-cd-github-source
+spec:
+  ownerAndRepository: <YOUR_GITHUB_USER_NAME_HERE>/tekton-sample-app

@@ -22,6 +22,7 @@ resources:
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.6/git-clone.yaml
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/argocd-task-sync-and-wait/0.2/argocd-task-sync-and-wait.yaml
+  - tasks/argocd-task-create-app.yaml
   - pipelines/tekton-argocd-build-deploy.yaml
   - triggers/rbac.yaml
   - triggers/tekton-argocd-build-deploy-trigger-template.yaml
@@ -30,6 +31,9 @@ resources:
   # - eventing/tekton-ci-channel.yaml
   - eventing/tekton-ci-cd-github-source.yaml
   # - eventing/tekton-ci-channel-subscribers.yaml
+
+patches:
+  - configs/github/githubsource_patch.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

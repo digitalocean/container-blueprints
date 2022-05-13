@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netclient-1
+  labels:
+    app: netclient-1
+spec:
+  selector:
+    matchLabels:
+      app: netclient-1
+  template:
+    metadata:
+      labels:
+        app: netclient-1
+    spec:
+      hostNetwork: true
+      containers:
+        - name: netclient-1
+          image: gravitl/netclient:v0.10.0
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "./netclient uninstall"]
+          env:
+            - name: NETCLIENT_ROAMING
+              value: "no"
+            - name: NETCLIENT_PORT
+              value: "51821"
+            - name: NETCLIENT_IS_STATIC
+              value: "yes"
+            - name: NETCLIENT_ENDPOINT
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: TOKEN
+              value: "eyJjb3JlZG5zYWRkciI6IjEzOC42OC4xNDkuMjUiLCJhcGljb25uIjoiYXBpLm5tLjEzOC02OC0xNDktMjUubmlwLmlvOjQ0MyIsImFwaWhvc3QiOiJhcGkubm0uMTM4LTY4LTE0OS0yNS5uaXAuaW8iLCJhcGlwb3J0IjoiODA4MSIsImdycGNjb25uIjoiZ3JwYy5ubS4xMzgtNjgtMTQ5LTI1Lm5pcC5pbzo0NDMiLCJncnBjaG9zdCI6ImdycGMubm0uMTM4LTY4LTE0OS0yNS5uaXAuaW8iLCJncnBjcG9ydCI6IjUwMDUxIiwiZ3JwY3NzbCI6Im9uIiwiY2hlY2tpbmludGVydmFsIjoiMTUiLCJuZXR3b3JrIjoiZGV2Iiwia2V5IjoiVU5TVUVOU3ltMFVSNkhzaCIsImxvY2FscmFuZ2UiOiIiLCJncnBjd2ciOiIiLCJncnBjd2dhZGRyIjoiIiwiZ3JwY3dncG9ydCI6IiIsImdycGN3Z3B1YmtleSI6IiIsImdycGN3Z2VuZHBvaW50IjoiIn0="
+          volumeMounts:
+            - mountPath: /etc/netclient
+              name: etc-netclient
+            - mountPath: /usr/bin/wg
+              name: wg
+          securityContext:
+            privileged: true
+      volumes:
+        - hostPath:
+            path: /etc/netclient
+            type: DirectoryOrCreate
+          name: etc-netclient
+        - hostPath:
+            path: /usr/bin/wg
+            type: File
+          name: wg
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wireguard-controller
+  labels:
+    app: wireguard-controller
+spec:
+  selector:
+    matchLabels:
+      app: wireguard-controller
+  template:
+    metadata:
+      labels:
+        app: wireguard-controller
+    spec:
+      hostNetwork: true
+      containers:
+        - image: gravitl/netclient:v0.10.0
+          imagePullPolicy: IfNotPresent
+          name: wg-installer
+          command: ["bash", "-c"]
+          args:
+            - while [ 1 ];
+              do if ! command -v wg &> /dev/null;
+              then echo "wireguard not installed, installing";
+              echo 'deb http://deb.debian.org/debian buster-backports main contrib non-free' > /etc/apt/sources.list.d/buster-backports.list;
+              apt update;
+              sudo apt -y install linux-headers-$(uname --kernel-release);
+              apt -y install wireguard wireguard-tools;
+              else echo "wireguard installed";
+              sleep 300;
+              fi;
+              done
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: rootfolder
+              mountPath: /
+      volumes:
+        - hostPath:
+            path: /
+            type: ""
+          name: rootfolder

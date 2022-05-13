@@ -17,10 +17,12 @@ You will be using an external MySQL server in order to abstract the database com
 - [Prerequisites](#prerequisites)
 - [Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)](#setting-up-a-digitalocean-managed-kubernetes-cluster-doks)
 - [Configuring the WordPress MySQL DO Managed Database](#configuring-the-wordpress-mysql-do-managed-database)
+- [Installing and configuring the OpenEBS Dynamic NFS Provisioner](#installing-and-configuring-the-openebs-dynamic-nfs-provisioner)
 - [Installing WordPress](#installing-wordpress)
   - [Deploying the Helm Chart](#deploying-the-helm-chart)
   - [Securing Traffic using Let's Encrypt Certificates](#securing-traffic-using-lets-encrypt-certificates)
     - [Installing the Nginx Ingress Controller](#installing-the-nginx-ingress-controller)
+    - [Configuring DNS for Nginx Ingress Controller](#configuring-dns-for-nginx-ingress-controller)
     - [Installing Cert-Manager](#installing-cert-manager)
     - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
   - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
@@ -36,6 +38,7 @@ To complete this tutorial, you will need:
 2. [Doctl](https://github.com/digitalocean/doctl/releases) CLI, for `DigitalOcean` API interaction.
 3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction.
 4. Basic knowledge on how to run and operate `DOKS` clusters. You can learn more [here](https://docs.digitalocean.com/products/kubernetes).
+5. A domain name from [GoDaddy](https://uk.godaddy.com), [Cloudflare](https://uk.godaddy.com) etc, to configure `DNS` within your `DigitalOcean` account
 
 ## Setting up a DigitalOcean Managed Kubernetes Cluster (DOKS)
 
@@ -53,7 +56,7 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 **Notes:**
 
-- The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
+- We recommend using a DOKS cluster with a minimum of 2 worker nodes to reduce application impact in case of node failures. The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
 
 - Please visit [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS) for more details.
 
@@ -61,9 +64,13 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 In this section, you will create a dedicated MySQL database such as [DigitalOcean’s Managed Databases](https://docs.digitalocean.com/products/databases/mysql/) for WordPress. This is necessary because your WordPress installation will live on a separate server inside the Kubernetes cluster.
 
-**Note:**
+**Notes:**
 
-By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. If you don't want to use an external database, please skip to the next chapter - [Installing WordPress](#installing-wordpress).
+- By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. Before deciding on using a managed database vs the default one (MariaDB), you should consider the following aspects::
+  - With a managed database service you only need to decide on the initial size of the database server and you are good to go. Another appeal is the automation side. Performing updates, running migrations, and creating backups are done automatically. Please see this [article](https://www.digitalocean.com/community/tutorials/understanding-managed-databases) for more information on managed databases. Using a managed database comes at an extra cost.
+  - With the MariaDB default Helm chart installation it is important to note that DB pods (the database application containers) are transient, so they can restart or fail more often. Specific administrative tasks like backups or scaling require more manual work and setup to achieve those goals. Using the MariaDB install will not create any additional costs.
+
+If you don't want to use an external database, please skip to the next chapter - [Installing and configuring the OpenEBS Dynamic NFS Provisioner](#installing-and-configuring-the-openebs-dynamic-nfs-provisioner).
 
 First, create the MySQL managed database:
 
@@ -150,6 +157,141 @@ Finally, you need to setup the trusted sources between your MySQL database and y
 
 Please visit [How to Secure MySQL Managed Database Clusters](https://docs.digitalocean.com/products/databases/mysql/how-to/secure/) for more details.
 
+## Installing and configuring the OpenEBS Dynamic NFS Provisioner
+
+A new [DigitalOcean Block Storage](https://docs.digitalocean.com/products/volumes/) volume is provisioned each time you use a [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) as part of your Kubernetes stateful application. The [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) resource tells Kubernetes about the underlying storage type available. DigitalOcean is using [do-block-storage](https://github.com/digitalocean/csi-digitalocean) by default.
+
+Below command lists the available storage classes for your Kubernetes cluster:
+
+```console
+kubectl get sc
+```
+
+The output looks similar to:
+
+```text
+NAME                         PROVISIONER                 RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immediate           true                   24h
+```
+
+DigitalOcean Block Storage Volumes are mounted as read-write by a single node (RWO). Additional nodes cannot mount the same volume. The data content of a PersistentVolume can not be accessed by multiple Pods simultaneously.
+
+Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamically StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX).
+
+NFS (Network File System) is a commonly used solution to provide RWX volumes on block storage. This server offers a PersistentVolumeClaim (PVC) in RWX mode so that multiple web applications can access the data in a shared fashion.
+
+OpenEBS Dynamic NFS Provisioner allows users to create a NFS PV that sets up a new Kernel NFS instance for each PV on top of the user's choice of backend storage.
+
+**Note:**
+
+Please visit [OpenEBS](https://openebs.io/) for more details.
+
+Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). You will be installing and configuring only the dynamic nfs provisioner, since Wordpress requires it.
+
+First, clone the `container-blueprints` repository. Then, change directory to your local copy and to the `DOKS-wordpress` subfolder:
+
+```shell
+
+git clone https://github.com/digitalocean/container-blueprints.git
+cd container-blueprints/DOKS-wordpress
+
+```
+
+Next, add the `Helm` repository:
+
+```console
+helm repo add openebs-nfs https://openebs.github.io/dynamic-nfs-provisioner
+
+helm repo update
+```
+
+Next, open and inspect the `assets/manifests/openEBS-nfs-provisioner.yaml` file provided in the repository:
+
+```yaml
+nfsStorageClass:
+  backendStorageClass: "do-block-storage"
+```
+
+**Note:**
+
+The override shown above changes the default value for the `backendStorageClass` to [do-block-storage](https://www.digitalocean.com/products/block-storage). Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for the full values.yaml file and more details.
+
+Finally, install the chart using Helm:
+
+```console
+helm install openebs-nfs openebs-nfs/nfs-provisioner --version 0.9.0 \
+  --namespace openebs \
+  --create-namespace \
+  -f "assets/manifests/openEBS-nfs-provisioner.yaml"
+```
+
+**Note:**
+A specific version for the Helm chart is used. In this case 0.9.0 was picked, which maps to the 0.9.0 version of the application. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
+
+You can verify openEBS deployment status via:
+
+```console
+helm ls -n openebs
+```
+
+The output looks similar to (notice that the STATUS column value is deployed):
+
+```text
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+openebs-nfs     openebs         1               2022-05-09 10:58:14.388721 +0300 EEST   deployed        nfs-provisioner-0.9.0   0.9.0  
+```
+
+NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Next, you will configure the default Kubernetes Storage Class (do-block-storage) provided by DigitalOcean as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner.
+
+Create a YAML file `sc-rwx.yaml`:
+
+```yaml
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rwx-storage
+  annotations: 
+    openebs.io/cas-type: nsfrwx
+    cas.openebs.io/config: |
+      - name: NSFServerType
+        value: "kernel"
+      - name: BackendStorageClass
+        value: "do-block-storage"
+provisioner: openebs.io/nfsrwx
+reclaimPolicy: Delete
+```
+
+Explanations for the above configuration:
+
+- `provisioner` - defines what storage class is used for provisioning PVs (e.g. openebs.io/nfsrwx)
+- `reclaimPolicy` - dynamically provisioned volumes are automatically deleted when a user deletes the corresponding PersistentVolumeClaim
+
+For more information please about openEBS please visit the [OpenEBS Documentation](https://openebs.io/docs).
+
+Apply via kubectl:
+
+```console
+kubectl apply -f assets/manifests/sc-rwx.yaml
+```
+
+Verify that the StorageClass was created by executing the command below:
+
+```console
+kubectl get sc
+```
+
+The ouput looks similar to:
+
+```text
+NAME                         PROVISIONER                 RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immediate           true                   107m
+openebs-kernel-nfs           openebs.io/nfsrwx           Delete          Immediate           false                  84m
+rwx-storage                  openebs.io/nfsrwx           Delete          Immediate           false                  84m
+```
+
+Now, you have a new StorageClass named rwx-storage to dynamically provision shared volumes on top of DigitalOcean Block Storage.
+
 ## Installing WordPress
 
 ### Deploying the Helm Chart
@@ -169,7 +311,7 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update bitnami
 ```
 
-Next, create a YAML file `(values.yml)` to override the helm values:
+Next, create a YAML file `(values.yaml)` to override the helm values:
 
 ```yaml
 # WordPress service type
@@ -179,9 +321,12 @@ service:
 # Enable persistence using Persistent Volume Claims
 persistence:
   enabled: true
-  storageClassName: do-block-storage
-  accessModes: ["ReadWriteOnce"]
+  storageClassName: rwx-storage
+  accessModes: ["ReadWriteMany"]
   size: 5Gi
+
+volumePermissions:
+  enabled: true
 
 # Prometheus Exporter / Metrics configuration
 metrics:
@@ -224,7 +369,7 @@ helm upgrade wordpress bitnami/wordpress \
     --install \
     --namespace wordpress \
     --version 13.1.4 \
-    --values values.yml
+    --values assets/manifests/values.yaml
 ```
 
 **Note:**
@@ -266,6 +411,94 @@ NAME                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/wordpress-6f55c9ffbd   1         1         1       23h
 ```
 
+Verify the PVCs created under the wordpress namespace, and associated OpenEBS volume under the openebs namespace:
+
+```console
+kubectl get pvc -A
+```
+
+The output looks similar to (notice the `RWX` access mode for the wordpress PVC, and the new storage class defined earlier via the openEBS NFS provisioner):
+
+```text
+NAMESPACE   NAME                                           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE
+openebs     nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   Bound    pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            do-block-storage   20m
+wordpress   wordpress                                      Bound    pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            rwx-storage        20m
+```
+
+Verify the associated PVs created in the cluster:
+
+```console
+kubectl get pv
+```
+
+The ouput looks similar to:
+
+```text
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                                  STORAGECLASS       REASON   AGE
+pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            Delete           Bound    wordpress/wordpress                                    rwx-storage                 23m
+pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   do-block-storage            23m
+```
+
+You can also create additional pods to demonstrate the capabilities of the NFS provisioner by opening the `(values.yaml)` file, and add the `replicaCount` line set to the number of desired replicas.
+
+```yaml
+...
+replicaCount: 3
+...
+```
+
+Apply changes using the helm upgrade command:
+
+```console
+helm upgrade wordpress bitnami/wordpress \
+    --atomic \
+    --create-namespace \
+    --install \
+    --namespace wordpress \
+    --version 13.1.4 \
+    --values assets/manifests/values.yaml
+```
+
+Verify that the changes are applied. Notice the increased replica count and number of pods:
+
+```console
+kubectl get all -n wordpress
+```
+
+The output looks similar to:
+
+```text
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/wordpress-5f5f4cf94c-d7mqb   1/1     Running   0          2m58s
+pod/wordpress-5f5f4cf94c-qkxdq   1/1     Running   0          3m38s
+pod/wordpress-5f5f4cf94c-zf46h   1/1     Running   0          87s
+
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+service/wordpress   ClusterIP   10.245.151.58   <none>        80/TCP,443/TCP   35m
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/wordpress   3/3     3            3           35m
+
+NAME                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/wordpress-5f5f4cf94c   3         3         3       35m
+replicaset.apps/wordpress-798789f994   0         0         0       19m
+```
+
+We can also check where the pods are deployed:
+
+```console
+kubectl get all -n wordpress -o wide
+```
+
+The output looks similar to (notice that the pods are deployed on different nodes):
+
+```text
+NAME                             READY   STATUS    RESTARTS   AGE     IP             NODE            NOMINATED NODE   READINESS GATES
+pod/wordpress-5f5f4cf94c-d7mqb   1/1     Running   0          4m7s    10.244.0.206   basicnp-cwxop   <none>           <none>
+pod/wordpress-5f5f4cf94c-qkxdq   1/1     Running   0          4m47s   10.244.1.84    basicnp-cwxol   <none>           <none>
+pod/wordpress-5f5f4cf94c-zf46h   1/1     Running   0          2m36s   10.244.0.194   basicnp-cwxop   <none>           <none>
+```
+
 ### Securing Traffic using Let's Encrypt Certificates
 
 The Bitnami WordPress Helm chart comes with built-in support for Ingress routes and certificate management through [cert-manager](https://github.com/jetstack/cert-manager). This makes it easy to configure TLS support using certificates from a variety of certificate providers, including [Let's Encrypt](https://letsencrypt.org/).
@@ -285,10 +518,10 @@ Next, install the Nginx Ingress Controller using Helm:
 ```console
 helm install ingress-nginx ingress-nginx/ingress-nginx --version 4.0.13 \
   --namespace ingress-nginx \
-  --create-namespace \
+  --create-namespace
 ```
 
-Finally, check if the Helm installation was successful by running command below:
+Next, check if the Helm installation was successful by running command below:
 
 ```console
 helm ls -n ingress-nginx
@@ -299,6 +532,84 @@ The output looks similar to the following (notice the `STATUS` column which has 
 ```text
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
 ingress-nginx   ingress-nginx   1               2022-02-14 12:04:06.670028 +0200 EET    deployed        ingress-nginx-4.0.13    1.1.0
+```
+
+Finally, list all load balancer resources from your `DigitalOcean` account, and print the `IP`, `ID`, `Name` and `Status`:
+
+```shell
+doctl compute load-balancer list --format IP,ID,Name,Status
+```
+
+The output looks similar to (should contain the new `load balancer` resource created for `Nginx Ingress Controller` in a healthy state):
+
+```text
+IP                 ID                                      Name                                Status
+45.55.107.209    0471a318-a98d-49e3-aaa1-ccd855831447    acdc25c5cfd404fd68cd103be95af8ae    active
+```
+
+### Configuring DNS for Nginx Ingress Controller
+
+In this step, you will configure `DNS` within your `DigitalOcean` account, using a `domain` that you own. Then, you will create the domain `A` record for wordpress.
+
+First, please issue the below command to create a new `domain` (`bond-0.co`, in this example):
+
+```shell
+doctl compute domain create bond-0.co
+```
+
+**Note:**
+
+**YOU NEED TO ENSURE THAT YOUR DOMAIN REGISTRAR IS CONFIGURED TO POINT TO DIGITALOCEAN NAME SERVERS**. More information on how to do that is available [here](https://www.digitalocean.com/community/tutorials/how-to-point-to-digitalocean-nameservers-from-common-domain-registrars).
+
+Next, you will add the required `A` record for the wordpress application. First, you need to identify the load balancer `external IP` created by the `nginx` deployment:
+
+Next, you will add required `A` records for the `hosts` you created earlier. First, you need to identify the load balancer `external IP` created by the `nginx` deployment:
+
+```shell
+kubectl get svc -n ingress-nginx
+```
+
+The output looks similar to (notice the `EXTERNAL-IP` column value for the `ingress-nginx-controller` service):
+
+```text
+NAME                                 TYPE           CLUSTER-IP     EXTERNAL-IP       PORT(S)                      AGE
+ingress-nginx-controller             LoadBalancer   10.245.109.87   45.55.107.209   80:32667/TCP,443:31663/TCP   25h
+ingress-nginx-controller-admission   ClusterIP      10.245.90.207   <none>          443/TCP                      25h
+```
+
+Then, add the records (please replace the `<>` placeholders accordingly). You can change the `TTL` value as per your requirement:
+
+```shell
+doctl compute domain records create bond-0.co --record-type "A" --record-name "wordpress" --record-data "<YOUR_LB_IP_ADDRESS>" --record-ttl "30"
+```
+
+**Hint:**
+
+If you have only `one load balancer` in your account, then please use the following snippet:
+
+```shell
+LOAD_BALANCER_IP=$(doctl compute load-balancer list --format IP --no-header)
+
+doctl compute domain records create bond-0.co --record-type "A" --record-name "wordpress" --record-data "$LOAD_BALANCER_IP" --record-ttl "30"
+```
+
+**Observation and results:**
+
+List the available records for the `bond-0.co` domain:
+
+```shell
+doctl compute domain records list bond-0.co
+```
+
+The output looks similar to the following:
+
+```text
+ID           Type    Name         Data                    Priority    Port    TTL     Weight
+311452740    SOA     @            1800                    0           0       1800    0
+311452742    NS      @            ns1.digitalocean.com    0           0       1800    0
+311452743    NS      @            ns2.digitalocean.com    0           0       1800    0
+311452744    NS      @            ns3.digitalocean.com    0           0       1800    0
+311453305    A       wordpress    45.55.107.209           0           0       30      0
 ```
 
 #### Installing Cert-Manager
@@ -316,7 +627,8 @@ Next, install Cert-Manager using Helm:
 ```console
 helm install cert-manager jetstack/cert-manager --version 1.6.1 \
   --namespace cert-manager \
-  --create-namespace
+  --create-namespace \
+  --set installCRDs=true
 ```
 
 Finally, check if Cert-Manager installation was successful by running below command:
@@ -342,7 +654,7 @@ cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300
 
 A cluster issuer is required first, in order to obtain the final TLS certificate. Create the following YAML file, and replace using a valid email address for TLS certificate registration.
 
-```yml
+```yaml
 # letsencrypt-issuer.yaml
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -369,10 +681,10 @@ spec:
 Apply via kubectl:
 
 ```console
-kubectl apply -f letsencrypt-issuer.yaml
+kubectl apply -f assets/manifests/letsencrypt-issuer.yaml
 ```
 
-To secure the traffic for WordPress, open the helm file `(value.yml)` created earlier and add the following helm values at the end:
+To secure WordPress traffic, open the helm `(values.yaml)` file created earlier, and add the following settings at the end:
 
 ```yaml
 # Enable ingress record generation for WordPress
@@ -398,7 +710,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version 13.1.4 \
     --timeout 10m0s \
-    --values values.yml
+    --values assets/manifests/values.yaml
 ```
 
 This automatically creates a certificate through cert-manager. You can then verify that you've successfully obtained the certificate by running the following command:
@@ -420,7 +732,7 @@ Now, you can access WordPress using the domain configured earlier.
 
 In this section, you will learn how to enable metrics for monitoring your WordPress instance.
 
-First, open the `values.yml` created earlier in this tutorial, and set `metrics.enabled` field to `true`:
+First, open the `values.yaml` created earlier in this tutorial, and set `metrics.enabled` field to `true`:
 
 ```yaml
 # Prometheus Exporter / Metrics configuration
@@ -436,7 +748,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version 13.1.4 \
     --timeout 10m0s \
-    --values values.yml
+    --values assets/manifests/values.yaml
 ```
 
 Next, port-forward the wordpress service to inspect the available metrics:
@@ -489,7 +801,7 @@ helm upgrade wordpress bitnami/wordpress \
     --namespace wordpress \
     --version <WORDPRESS_NEW_VERSION> \
     --timeout 10m0s \
-    --values values.yml
+    --values assets/manifests/values.yaml
 ```
 
 **Note:**

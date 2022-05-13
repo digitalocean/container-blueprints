@@ -1,0 +1,2 @@
+nfsStorageClass:
+  backendStorageClass: "do-block-storage"

@@ -56,7 +56,7 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 **Notes:**
 
-- The recommended worker nodes for Wordpress is 2 for pod replication on multiple nodes and minimizing the impact of node failure. The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
+- We recommend using a DOKS cluster with a minimum of 2 worker nodes to reduce application impact in case of node failures. The example from this tutorial is using 3 worker nodes, 4cpu/8gb (`$48/month`) each, and the autoscaler configured between 2 and 4 nodes max. So, your cluster cost is between `$96-$192/month` with `hourly` billing. To choose a different node type, you can pick another slug from `doctl compute size list`.
 
 - Please visit [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS) for more details.
 
@@ -66,7 +66,7 @@ In this section, you will create a dedicated MySQL database such as [DigitalOcea
 
 **Notes:**
 
-- By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. Before deciding on using a managed database or the default MariaDB install of the Helm chart consider the following:
+- By default, WordPress Helm chart installs MariaDB on a separate pod inside the cluster and configures it as the default database. Before deciding on using a managed database vs the default one (MariaDB), you should consider the following aspects::
   - With a managed database service you only need to decide on the initial size of the database server and you are good to go. Another appeal is the automation side. Performing updates, running migrations, and creating backups are done automatically. Please see this [article](https://www.digitalocean.com/community/tutorials/understanding-managed-databases) for more information on managed databases. Using a managed database comes at an extra cost.
   - With the MariaDB default Helm chart installation it is important to note that DB pods (the database application containers) are transient, so they can restart or fail more often. Specific administrative tasks like backups or scaling require more manual work and setup to achieve those goals. Using the MariaDB install will not create any additional costs.
 
@@ -176,7 +176,7 @@ do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immedia
 
 DigitalOcean Block Storage Volumes are mounted as read-write by a single node (RWO). Additional nodes cannot mount the same volume. The data content of a PersistentVolume can not be accessed by multiple Pods simultaneously.
 
-Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamically StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX)
+Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamically StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX).
 
 NFS (Network File System) is a commonly used solution to provide RWX volumes on block storage. This server offers a PersistentVolumeClaim (PVC) in RWX mode so that multiple web applications can access the data in a shared fashion.
 
@@ -188,7 +188,7 @@ Please visit [OpenEBS](https://openebs.io/) for more details.
 
 Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). You will be installing and configuring only the dynamic nfs provisioner, since Wordpress requires it.
 
-First, clone the `container-blueprints` repository and change directory to your local copy and the `DOKS-wordpress` folder in it:
+First, clone the `container-blueprints` repository. Then, change directory to your local copy and to the `DOKS-wordpress` subfolder:
 
 ```shell
 
@@ -214,7 +214,7 @@ nfsStorageClass:
 
 **Note:**
 
-The override for the current use case is that you need change the defualt value of the `backendStorageClass` to [do-block-storage](https://www.digitalocean.com/products/block-storage). Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for the full values.yaml file and more details.
+The override shown above changes the default value for the `backendStorageClass` to [do-block-storage](https://www.digitalocean.com/products/block-storage). Please visit [openebs nfs provisioner helm values](https://github.com/openebs/dynamic-nfs-provisioner/blob/develop/deploy/helm/charts/values.yaml) for the full values.yaml file and more details.
 
 Finally, install the chart using Helm:
 
@@ -241,7 +241,7 @@ NAME            NAMESPACE       REVISION        UPDATED                         
 openebs-nfs     openebs         1               2022-05-09 10:58:14.388721 +0300 EEST   deployed        nfs-provisioner-0.9.0   0.9.0  
 ```
 
-NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Next, you will configure the default Kubernetes Storage Class (do-block-storage) provided by DigitalOcean as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner. The following steps create an OpenEBS NFS provisioner supported Storage Class.
+NFS provisioner requires a block storage device to create the disk capacity required for the NFS server. Next, you will configure the default Kubernetes Storage Class (do-block-storage) provided by DigitalOcean as the backend storage for the NFS provisioner. In that case, whichever application uses the newly created following Storage Class, can consume shared storage (NFS) on a DigitalOcean volume using OpenEBS NFS provisioner.
 
 Create a YAML file `sc-rwx.yaml`:
 

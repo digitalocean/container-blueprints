@@ -19,17 +19,22 @@ commonLabels:
   deploy: argocd
 
 resources:
+  # Tekton catalog (Hub) tasks used in this tutorial
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.6/git-clone.yaml
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/argocd-task-sync-and-wait/0.2/argocd-task-sync-and-wait.yaml
+  # Custom Tekton tasks used in this tutorial
   - tasks/argocd-task-create-app.yaml
+  # Custom pipelines used in this tutorial
   - pipelines/tekton-argocd-build-deploy.yaml
+  # Tekton triggers/events resources
   - triggers/rbac.yaml
   - triggers/tekton-argocd-build-deploy-trigger-template.yaml
   - triggers/tekton-argocd-build-deploy-trigger-binding.yaml
   - triggers/tekton-argocd-build-deploy-event-listener.yaml
-  # - eventing/tekton-ci-channel.yaml
+  # Knative eventing resources
   - eventing/tekton-ci-cd-github-source.yaml
+  # - eventing/tekton-ci-channel.yaml
   # - eventing/tekton-ci-channel-subscribers.yaml
 
 patches:

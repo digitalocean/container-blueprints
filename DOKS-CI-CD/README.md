@@ -2,17 +2,17 @@
 
 ## Introduction
 
-This blueprint will show you how to implement a CI/CD solution using free and popular open source implementations that run on Kubernetes clusters natively. You will be using the DigitalOcean marketplace to provision each system application to your Kubernetes cluster, such as Tekton, Argo CD, Knative, Cert-Manager. The DigitalOcean marketplace is a collection of pre-configured 1-click apps that you can quickly deploy to your Kubernetes cluster (DOKS).
+This blueprint will show you how to implement a CI/CD solution using free and popular open source implementations that run on Kubernetes clusters natively. You will be using the DigitalOcean marketplace to provision each software component to your Kubernetes cluster, such as Tekton, Argo CD, Knative, Cert-Manager. The DigitalOcean marketplace is a collection of pre-configured 1-click apps that you can quickly deploy to your Kubernetes cluster (DOKS).
 
-You will learn how to use Tekton to build a CI pipeline that continuously fetches code changes from a Git repository, and builds a Docker image for your custom application. Then, Tekton will push the docker image to a remote registry and notifies Argo CD to deploy it to your Kubernetes cluster.
+You will learn how to use Tekton to build a CI/CD pipeline that continuously fetches code changes from a Git repository, and builds a Docker image for your custom application. Then, Tekton will push the docker image to a remote registry and notifies Argo CD to deploy it to your Kubernetes cluster.
 
 The important building blocks are as follows:
 
-1. [Kaniko](https://github.com/GoogleContainerTools/kaniko), for building container images in a Kubernetes cluster directly.
+1. [Kaniko](https://github.com/GoogleContainerTools/kaniko), for building container images directly in a Kubernetes cluster.
 2. [Tekton](https://tekton.dev) pipelines, for implementing the CI process.
 3. [Argo CD](https://argoproj.github.io/cd), for implementing the CD process.
 4. [Knative](https://knative.dev), for running and exposing applications functionality on Kubernetes with ease. Also enables Tekton Pipelines triggering whenever a push happens on your GitHub repository via the Knative Eventing component.
-5. [Cert-Manager](https://cert-manager.io), for managing and enabling TLS termination for Knative Services.
+5. [Cert-Manager](https://cert-manager.io), for managing TLS termination of Knative Services.
 
 On each code change a Tekton CI pipeline kicks in, builds a container image for your custom application, and uploads it to a Docker registry. Then, Argo CD pulls the Docker image, and deploys it to your DOKS cluster as a Knative application (or service). All described steps run automatically.
 
@@ -20,14 +20,14 @@ After completing this blueprint, you should have a fully functional CI/CD pipeli
 
 Following diagram shows the complete setup:
 
-**TODO**
+![DOKS CI/CD Overview](assets/images/doks_ci_cd_overview.png)
 
 How this blueprint is structured:
 
 1. First, a short introduction is given for each component (such as Kaniko, Tekton, Argo CD, Knative, etc). Each introductory section also tries to explain the role of each component in this guide.
 2. Then, you will be guided through the installation steps for each component, using the DigitalOcean 1-click apps marketplace.
 3. Next, you will configure Knative Eventing to react on GitHub events and trigger the CI/CD pipeline.
-4. Final steps would be to implement and test the CI/CD setup (using Knative, Tekton and Argo CD), and deploy Knative serverless applications.
+4. Final steps would be to implement and test the CI/CD setup (using Knative, Tekton and Argo CD), and deploy a sample Knative application.
 
 ## Table of Contents
 
@@ -54,15 +54,15 @@ How this blueprint is structured:
   - [Provisioning Tekton Dashboard](#provisioning-tekton-dashboard)
 - [Step 3 - Installing Argo CD](#step-3---installing-argo-cd)
 - [Step 4 - Installing Knative](#step-4---installing-knative)
-- [Step 5 - Preparing the Sample Application Requirements](#step-5---preparing-the-sample-application-requirements)
-  - [Forking the Sample Application Repo](#forking-the-sample-application-repo)
-  - [Creating a DigitalOcean Docker Registry](#creating-a-digitalocean-docker-registry)
-  - [Creating a Dedicated Namespaces for Kubernetes Resources](#creating-a-dedicated-namespaces-for-kubernetes-resources)
-- [Step 6 - Configuring Knative Serving](#step-6---configuring-knative-serving)
+- [Step 5 - Configuring Knative Serving](#step-5---configuring-knative-serving)
   - [Configuring DigitalOcean Domain Records for Knative Services](#configuring-digitalocean-domain-records-for-knative-services)
   - [Configuring a Custom Domain and Auto TLS Feature for Knative Services](#configuring-a-custom-domain-and-auto-tls-feature-for-knative-services)
   - [Knative Private Services](#knative-private-services)
-- [Step 7 - Configuring Knative Eventing](#step-7---configuring-knative-eventing)
+- [Step 6 - Configuring Knative Eventing](#step-6---configuring-knative-eventing)
+- [Step 7 - Preparing the Sample Application Requirements](#step-7---preparing-the-sample-application-requirements)
+  - [Forking the Sample Application Repo](#forking-the-sample-application-repo)
+  - [Creating a DigitalOcean Docker Registry](#creating-a-digitalocean-docker-registry)
+  - [Creating a Dedicated Namespaces for Kubernetes Resources](#creating-a-dedicated-namespaces-for-kubernetes-resources)
 - [Step 8 - Setting Up Your First CI/CD Pipeline Using Tekton and Argo CD](#step-8---setting-up-your-first-cicd-pipeline-using-tekton-and-argo-cd)
 - [Step 9 - Testing the CI/CD Setup](#step-9---testing-the-cicd-setup)
 - [Conclusion](#conclusion)
@@ -75,11 +75,13 @@ To complete this tutorial, you will need:
 1. A working domain that you own. This is required for exposing public services used in this guide (including GitHub webhooks). Make sure to also read the DigitalOcean [DNS Quickstart Guide](https://docs.digitalocean.com/products/networking/dns/quickstart), as well as the additional how to's on this topic.
 2. A working `DOKS` cluster running `Kubernetes version >=1.21` that you have access to. The DOKS cluster must have at least `2 nodes`, each with `2 CPUs`, `4 GB` of memory, and `20 GB` of disk storage. For additional instructions on configuring a DigitalOcean Kubernetes cluster, see: [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS#how-to-set-up-a-digitalocean-managed-kubernetes-cluster-doks).
 3. A [Git](https://git-scm.com/downloads) client, to interact with GitHub repositories.
-4. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
-5. [Helm](https://www.helm.sh), for interacting with Helm releases created by the DigitalOcean 1-click apps used in this tutorial.
-6. [Argo CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation), to interact with `Argo CD` using the command line interface.
-7. [Tekton CLI](https://tekton.dev/docs/cli/#installation), to interact with `Tekton Pipelines` using the command line interface.
-8. [Knative CLI](https://knative.dev/docs/install/client/install-kn), to interact with `Knative` using the command line interface.
+4. [Doctl](https://docs.digitalocean.com/reference/doctl/how-to/install), for interacting with DigitalOcean API.
+5. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
+6. [Helm](https://www.helm.sh), for interacting with Helm releases created by the DigitalOcean 1-click apps used in this tutorial.
+7. [Argo CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation), to interact with `Argo CD` using the command line interface.
+8. [Tekton CLI](https://tekton.dev/docs/cli/#installation), to interact with `Tekton Pipelines` using the command line interface.
+9. [Knative CLI](https://knative.dev/docs/install/client/install-kn), to interact with `Knative` using the command line interface.
+10. [Kustomize](https://kustomize.io) is extensively used in this guide, and at least some basic knowledge is required. You can follow the [official DigitalOcean tutorial](https://www.digitalocean.com/community/tutorials/how-to-manage-your-kubernetes-configurations-with-kustomize) as a starting point, as well as some real world examples.
 
 ## Getting to Know Kaniko
 
@@ -98,24 +100,24 @@ Continuous integration (or CI) is the process of automating the integration of s
 In general, each CI automation consists of several steps:
 
 1. Fetching application code from a remote SCM (Source Control Management) repository, such as Git.
-2. Building the application (specific compilers are invoked, depending on the programming language).
-3. Testing application code changes (via unit tests, usually).
-4. Creating the final artifact (a binary or a zip file, a Docker file, etc) for application delivery.
+2. Building application code via specific compilers, depending on the used programming language.
+3. Testing application code changes (via unit testing, integration testing, etc).
+4. Creating the final artifact (binary file, zip file, Docker image, etc) for application delivery.
 5. Pushing the application artifact to a remote repository for later use by a continuous delivery system.
 
 [Tekton](https://tekton.dev) is a cloud native solution for building CI/CD systems on top of Kubernetes clusters. It is specifically engineered to run on Kubernetes, and empowers developers to create CI pipelines using reusable blocks called Tasks. Other important components are Tekton CLI and Catalog (collection of reusable Tasks), that make Tekton a complete ecosystem.
 
-In this guide, Tekton is used to implement the CI part via the Pipelines component (and associated components, such as: Tasks, Triggers, etc).
+In this guide, Tekton is used to implement the CI part via the `Pipeline` resource (and associated components, such as: `Tasks`, `Triggers`, etc).
 
 Tekton is modular in nature and very well organized. This tutorial relies on the following Tekton components to implement the CI part:
 
-- [Tasks](https://tekton.dev/docs/pipelines/tasks) - used to organize the steps performing each action such as build and test your application code.
-- [Pipelines](https://tekton.dev/docs/pipelines/pipelines) - used to organize tasks and define your custom CI flow.
+- [Tasks](https://tekton.dev/docs/pipelines/tasks) - used to organize the steps performing each action, such as build and test your application code.
+- [Pipelines](https://tekton.dev/docs/pipelines/pipelines) - used to organize tasks and define your custom CI/CD flow.
 - [Triggers and EventListeners](https://tekton.dev/docs/triggers) - used to capture and trigger on Git events (e.g. git push events).
 
 ### Tasks
 
-A Tekton Task is a collection of Steps that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create image, push to Docker registry, etc. To add Steps to a Task you define a steps field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
+A Tekton `Task` is a collection of `Steps` that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create a Docker image, push to Docker registry, etc. To add steps to a Task you define a `steps` field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
 
 For each task, Tekton creates a Kubernetes Pod in your cluster to run the steps. Then, each step runs in a docker container, thus it must reference a docker image. The container you choose depends on what your step does. For example:
 
@@ -237,13 +239,13 @@ Explanation for the above configuration:
 
 **Hint:**
 
-The [Tekton Catalog](https://hub.tekton.dev) (or Hub) provides a ready to use collection of task definitions for common use scenarios such as cloning a git repository, building a docker image via kaniko, etc. You can install them in your Kubernetes cluster either via `tkn` CLI, or `kubectl`. Then, you can reference each task in your custom pipeline using the `taskRef` field (you can see such an example in the pipeline definition to follow).
+The [Tekton Catalog](https://hub.tekton.dev) (or Hub) provides a ready to use collection of task definitions for common use scenarios, such as cloning a git repository, building a docker image via kaniko, etc. You can install them in your Kubernetes cluster either via `tkn` CLI, or `kubectl`. Then, you can reference each task in your custom pipeline using the `taskRef` field (you can see such an example in the example pipeline definition to follow).
 
 By design, Tekton will not run your Pipelines when created. To launch a Pipeline into execution, you need to create a [PipelineRun](https://tekton.dev/docs/pipelines/pipelineruns) resource. A PipelineRun allows you to instantiate and execute a Tekton Pipeline in your Kubernetes cluster. A PipelineRun executes the Tasks in the Pipeline in the order they are specified until all Tasks have executed successfully or a failure occurs.
 
 **Important Notes:**
 
-- Pipeline resources are [deprecated](https://tekton.dev/docs/pipelines/migrating-v1alpha1-to-v1beta1/#replacing-pipelineresources-with-tasks) starting with `v1beta1` version of Tekton APIs. Users are encouraged to use the new features as explained in the deprecation note.
+- Pipeline resources are [deprecated](https://tekton.dev/docs/pipelines/migrating-v1alpha1-to-v1beta1/#replacing-pipelineresources-with-tasks) starting with `v1beta1` version of Tekton APIs (hence, not used in this tutorial as well). Users are encouraged to use the new features as explained in the deprecation note.
 - Tasks referenced within a Pipeline will get the corresponding TaskRun objects created automatically (no need to create them separately).
 
 Below picture illustrates Pipelines and Tasks composition:
@@ -254,24 +256,24 @@ Please visit the [official documentation page](https://tekton.dev/docs/pipelines
 
 ### Event Listeners and Triggers
 
-You need a mechanism to tell Tekton how to react and trigger your CI pipeline in response to external events emitted by various sources (such as GitHub for example). This is accomplished via another Tekton component called Triggers (needs to be installed separately). Tekton triggers allows you to detect and extract information from events from a variety of sources and execute TaskRuns and PipelineRuns based on that information. It can also pass information extracted from events directly to TaskRuns and PipelineRuns.
+You need a mechanism to tell Tekton how to react and trigger your CI pipeline in response to external events emitted by various sources, such as GitHub. This is accomplished via another Tekton component called [Triggers](https://github.com/tektoncd/triggers) (needs to be installed separately). Tekton triggers allows you to detect and extract information from events from a variety of sources, and execute TaskRuns and PipelineRuns based on that information. It can also pass information extracted from events directly to TaskRuns and PipelineRuns.
 
-Following resources are required to automatically trigger a CI pipeline using GitHub webhooks:
+Following resources are required to automatically trigger a Tekton pipeline using GitHub webhooks:
 
-1. An [EventListener](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md) - listens for events and specifies one or more `Triggers`.
+1. An [EventListener](https://github.com/tektoncd/triggers/blob/main/docs/eventlisteners.md) - listens for events, and specifies one or more `Triggers`.
 2. A [Trigger](https://github.com/tektoncd/triggers/blob/main/docs/triggers.md) - specifies what happens when the `EventListener` detects an event. A `Trigger` specifies a `TriggerTemplate` and a `TriggerBinding`.
 3. A [TriggerTemplate](https://github.com/tektoncd/triggers/blob/main/docs/triggertemplates.md) - specifies what `TaskRun` or `PipelineRun` to execute when your `EventListener` detects an event.
 4. A [TriggerBinding](https://github.com/tektoncd/triggers/blob/main/docs/triggerbindings.md) - specifies what data to extract from the event payload, and how to pass that data to the `TriggerTemplate`.
 
 Optionally, you can also create an [Interceptor](https://github.com/tektoncd/triggers/blob/main/docs/interceptors.md) to filter events, perform webhook verification (using secrets), or other processing before the Trigger actions are executed.
 
-The EventListener logic is implemented via a dedicated controller, running as a Pod in your Kubernetes cluster. Following diagram shows how the event listener works:
+Following diagram illustrates how Tekton EventListeners and Triggers work:
 
 ![Tekton Events Listening Overview](assets/images/tekton_event_listener_overview.png)
 
-In this blueprint you will use Tekton event listeners and triggers to respond to GitHub push events, and run the CI pipeline used to build and publish your custom application image to a remote Docker registry.
+In this blueprint you will use Tekton EventListeners and Triggers to respond to GitHub push events, and trigger the CI/CD pipeline used to build and deploy your custom application.
 
-Please visit the [official project page](https://tekton.dev/docs/triggers) for more information and details about Tekton event listeners and triggers.
+Please visit the [official project page](https://tekton.dev/docs/triggers) for more information and details about Tekton EventListener and Triggers.
 
 ### Tekton Catalog
 
@@ -279,15 +281,17 @@ Please visit the [official project page](https://tekton.dev/docs/triggers) for m
 
 Following listing contains a few interesting tasks to start with:
 
-- [Git clone](https://hub.tekton.dev/tekton/task/git-clone) - clone a Git repository URL to a workspace.
-- [Buildpacks](https://hub.tekton.dev/tekton/pipeline/buildpacks) - builds source into a container image using [Cloud Native Buildpacks](https://buildpacks.io).
-- [ArgoCD](https://hub.tekton.dev/tekton/task/argocd-task-sync-and-wait) - deploys an Argo CD application and waits for it to be healthy.
+- [Git Clone Task](https://hub.tekton.dev/tekton/task/git-clone) - clone a Git repository URL to a workspace.
+- [Kaniko Task](https://hub.tekton.dev/tekton/task/kaniko) - builds source into a container image using [Cloud Native Buildpacks](https://buildpacks.io).
+- [ArgoCD Sync and Wait Task](https://hub.tekton.dev/tekton/task/argocd-task-sync-and-wait) - deploys an Argo CD application and waits for it to be healthy.
+
+In this blueprint you will use Tekton catalog to install commonly used tasks, such as [git-clone](https://hub.tekton.dev/tekton/task/git-clone), [kaniko](https://hub.tekton.dev/tekton/task/kaniko) and [argocd-sync-and-wait](https://hub.tekton.dev/tekton/task/argocd-task-sync-and-wait).
 
 Please visit the [Tekton Catalog](https://github.com/tektoncd/catalog) GitHub project page to learn more.
 
 ### Tekton Dashboard
 
-Tekton Dashboard is a web-based interface for Tekton Pipelines and Tekton triggers resources. It allows you to manage and view Tekton resource creation, execution, and completion.
+[Tekton Dashboard](https://github.com/tektoncd/dashboard) is a web-based interface for Tekton Pipelines and Tekton triggers resources. It allows you to manage and view Tekton resource creation, execution, and completion.
 
 Tekton Dashboard supports:
 
@@ -297,6 +301,8 @@ Tekton Dashboard supports:
 - Show resources for the whole cluster or limit visibility to a particular namespace.
 - Import resources directly from a git repository.
 - Adding functionality through extensions.
+
+In this blueprint you will use Tekton dashboard to interact with pipeline runs, and visualize results (such as logs) for each task from the CI/CD flow.
 
 Please visit the [Tekton Dashboard](https://github.com/tektoncd/dashboard) GitHub project page to learn more.
 
@@ -315,7 +321,7 @@ Argo CD adheres to the same GitOps patterns and principles, thus maintaining you
 
 Why Argo and not Tekton for the CD part ?
 
-While you can accomplish CD using Tekton as well, Argo is more specialized for this task. It's true that every CI systems can be used to perform deployments as well, but it implies more steps and logic to accomplish the same thing. Traditionally, you would use all kind of scripts and glue logic to create the CD part inside a CI system (take Jenkins as an example). Soon you will notice that it's unnatural, hence a dedicated CD solution is more appropriate.
+While you can accomplish the CD part using Tekton as well, Argo is more specialized for this task. It's true that every CI systems can be used to perform deployments as well, but it implies more steps and logic to accomplish the same thing. Traditionally, you would use all kind of scripts and glue logic to create the CD part inside a CI system (take Jenkins as an example). Soon, you will notice that it's unnatural, hence a dedicated CD solution is more appropriate.
 
 Other important aspects to consider:
 
@@ -323,11 +329,13 @@ Other important aspects to consider:
 2. How easy can I deploy to multiple environments and Kubernetes clusters?
 3. What happens if my CI/CD system goes down?
 
-First, the most important aspect is to have a setup where a specialized system takes care of the CD part, and doesn't interfere or it's not dependent on the CI part. If the CI system goes down for some reason, it shouldn't affect the CD part and vice-versa. On the other hand, a system or a component that does multiple things at once can be prone to failure in accomplishing both. So, it's best to follow the single responsibility principle in general, and let Tekton take care of the CI part, and Argo to handle CD. On top of that, you can use Argo to deploy and maintain configuration for system applications used in this blueprint as well, such as Tekton and Knative.
+Argo CD helps you implement GitOps, and keep your Kubernetes manifests (even those used in this guide) synced with a Git repository. No need to go back and apply everything by hand on every change. GitOps also allows you to easily keep track of changes, and most important forbid manual intervention in your cluster (via other members in the team using `kubectl`, for example).
+
+Next, the most important aspect is to have a setup where a specialized system takes care of the CD part, and doesn't interfere or it's not dependent on the CI part. If the CI system goes down for some reason, it shouldn't affect the CD part and vice-versa. On the other hand, a system or a component that does multiple things at once can be prone to failure in accomplishing both. So, it's best to follow the single responsibility principle in general, and let Tekton take care of the CI part, and Argo to handle CD (as well as GitOps).
 
 ### Applications
 
-Argo CD is using the [Application](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#applications) core concept to manage applications deployment and lifecycle. Inside an Argo CD application manifest you define the Git repository hosting your application definitions, as well as the corresponding Kubernetes cluster to deploy applications. In other words, an Argo CD application defines the relationship between a source repository and a Kubernetes cluster. It's a very concise and scalable design, where you can associate multiple sources (Git repositories) and corresponding Kubernetes clusters.
+Argo CD is using the [Application](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#applications) core concept to manage applications deployment and lifecycle. Inside an Argo CD application manifest you define the Git repository hosting your application definitions, as well as the corresponding Kubernetes cluster used to deploy your applications. In other words, an Argo CD application defines the relationship between a source repository and a Kubernetes cluster. It's a very concise and scalable design, where you can associate multiple sources (Git repositories) and corresponding Kubernetes clusters.
 
 A major benefit of using applications is that you don't need to deploy Argo to each cluster individually. You can use a dedicated cluster for Argo, and deploy applications to all clusters at once from a single place. This way, you avoid Argo CD downtime or loss, in case other environments have issues or get decommissioned.
 
@@ -335,11 +343,13 @@ A major benefit of using applications is that you don't need to deploy Argo to e
 
 You can group similar applications into a [Project](https://argo-cd.readthedocs.io/en/stable/user-guide/projects). Projects permit logical grouping of applications and associated roles/permissions, when working with multiple teams. When not specified, each new application belongs to the `default` project. The `default` project is created automatically, and it doesn't have any restrictions. The default project can be modified, but not deleted.
 
-This tutorial is using the `default` project in all examples.
+**Note:**
 
-Please visit the official documentation website to read more about Argo CD [core concepts](https://argo-cd.readthedocs.io/en/stable/core_concepts).
+All examples used in this tutorial use the `default` Argo CD project.
 
-In this blueprint you will learn how to use Argo CD to continuously deploy code changes for your custom applications.
+Please visit the official documentation website to read more about [Argo CD core concepts](https://argo-cd.readthedocs.io/en/stable/core_concepts).
+
+In this blueprint, you will learn how to use Argo CD to continuously deploy code changes for your custom applications.
 
 ## Getting to Know Knative
 
@@ -349,12 +359,12 @@ Knative reduces the boilerplate needed for spinning up workloads in Kubernetes, 
 
 Knative has two main components:
 
-- [Serving](https://knative.dev/docs/serving): Abstracts all required parts needed for your application to run and be accessible to the outside world.
-- [Eventing](https://knative.dev/docs/eventing): Adds support for event based programming, thus making it easy to create event driven architectures.
+- [Serving](https://knative.dev/docs/serving) - abstracts all required parts needed for your application to run and be accessible to the outside world.
+- [Eventing](https://knative.dev/docs/eventing) - adds support for event driven programming, thus making it easy to create event driven architectures.
 
 ### Serving Component
 
-This blueprint makes use of the Knative Serving component to run and expose a sample web application ([2048 game](https://en.wikipedia.org/wiki/2048_(video_game))) for testing Knative Services. You will also learn how to run serverless applications by creating Knative Services (not to be confused with Kubernetes Services).
+In this blueprint you will learn how to use the [Knative Serving](https://knative.dev/docs/serving) component to deploy and publicly expose serverless web application - the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game)), via [Services](https://knative.dev/docs/serving/services) (not to be confused with Kubernetes Services).
 
 For each application you want to run and expose publicly via Knative, you need to create a Knative Service CRD. A Knative Service represents the basic unit of execution for the Knative Serving component. Going further, a Knative Service resource takes care of abstracting all the details needed to run and expose your application, such as: creating Kubernetes deployments (including autoscaling), services, ingress configurations, etc.
 
@@ -369,7 +379,7 @@ Knative Serving features include:
 
 ### Eventing Component
 
-The Knative Eventing component is used in this blueprint to connect GitHub events source with Tekton Pipelines for automatic triggering of the CI flow. The Tekton CI pipeline rebuilds the application image whenever a git push event is triggered by the GitHub repository hosting the application source code.
+The [Knative Eventing](https://knative.dev/docs/eventing) component is used in this blueprint to connect GitHub events with Tekton Pipelines for automatic triggering of the CI flow. The Tekton CI pipeline rebuilds the application image whenever a git push event is triggered by the GitHub repository hosting the application source code.
 
 Knative Eventing helps address common tasks for cloud native development such as:
 
@@ -377,36 +387,38 @@ Knative Eventing helps address common tasks for cloud native development such as
 - Loose coupling between services, thus making easy to deploy individual application components.
 - Various services can be connected without modifying consumers or producers, thus facilitating building new applications.
 
-Event-driven architectures allow loose coupling between components in the system. This has a tremendous advantage, meaning that new functionality can be added easily, without interfering or breaking other components. Event-based architectures use a message broker such as [Apache Kafka](https://kafka.apache.org/) or [RabbitMQ](https://www.rabbitmq.com/) (or an `in-memory` one - not recommended for production systems). Using brokers abstracts the details of event routing from the event producer and event consumer. In other words, applications need not to worry how a message (or event) travels from point A to B. The broker takes care of all the details, and routes each message (or event) correctly from the source to the destination (or multiple destinations). Brokers also offer support for complex deliveries such as responding to events, message filtering, delivery guarantees, etc.
+Event-driven architectures allow loose coupling between components in the system. This has a tremendous advantage, meaning that new functionality can be added easily without interfering or breaking other components. Event-based architectures use a message broker such as [Apache Kafka](https://kafka.apache.org) or [RabbitMQ](https://www.rabbitmq.com) (or an `in-memory` one - not recommended for production systems). Using brokers abstracts the details of event routing from the event producer and event consumer. In other words, applications need not to worry how a message (or event) travels from point A to B. The broker takes care of all the details, and routes each message (or event) correctly from the source to the destination (or multiple destinations). Brokers also offer support for complex deliveries such as responding to events, message filtering, delivery guarantees, etc.
 
 Knative eventing provides support for the following delivery mechanisms:
 
-- [Simple Delivery](https://knative.tips/eventing/delivery-methods/simple-delivery) - used in `1:1` scenarios, where an event source sends messages to a single subscriber (such as a Knative Service).
-- [Complex Delivery](https://knative.tips/eventing/delivery-methods/complex-delivery) via [Channels](https://knative.dev/docs/eventing/channels) and [Subscriptions](https://knative.dev/docs/eventing/channels/subscriptions) - used in `1:n` fanout scenarios, where an event source can send messages to 1 or more subscribers via channels. Channels can be in-memory, or persistent if using Kafka.
-- [Complex Delivery with Reply](https://knative.tips/eventing/delivery-methods/complex-delivery-reply) - same as above, but supports replying to events. Harder to maintain when working with multiple channels, and many subscribers reply to events.
+- [Simple Delivery](https://knative.tips/eventing/delivery-methods/simple-delivery) - used in `1:1` scenarios, where an event source sends messages to a single subscriber (such as a Knative Service, or a Kubernetes Service).
+- [Complex Delivery](https://knative.tips/eventing/delivery-methods/complex-delivery) via [Channels](https://knative.dev/docs/eventing/channels) and [Subscriptions](https://knative.dev/docs/eventing/channels/subscriptions) - used in `1:n` fanout scenarios, where an event source can send messages to 1 or more subscribers via channels. Channels can be in-memory (volatile), or persistent if using Kafka.
+- [Complex Delivery with Reply](https://knative.tips/eventing/delivery-methods/complex-delivery-reply) - same as above, but supports replying to events. Harder to maintain when working with multiple channels, and multiple subscribers replying to events.
 - [Complex Delivery via Brokers and Triggers](https://knative.tips/eventing/delivery-methods/broker-trigger-delivery) - a Broker combines Channel, reply, and filter functionality into a single resource. Trigger provides declarative filtering of all events. This is the preferred method when developing applications using Knative Eventing.
 
-For more information about Knative and other features, please visit the [official documentation website](https://knative.dev/docs). [Knative Tips](https://knative.tips) is also a very good source of documentation for Knative in general.
+In this blueprint, you will learn how to use Knative Eventing to listen for GitHub events, and trigger the Tekton CI/CD pipeline that builds and deploys your custom application.
+
+For more information about Knative and other features, please visit the [official documentation website](https://knative.dev/docs). [Knative Tips](https://knative.tips) is also a very good source of documentation and practical examples for Knative in general.
 
 ## Getting to Know Cert-Manager
 
 [Cert-Manager](https://cert-manager.io) is an open-source certificate management tool designed to work with Kubernetes. It supports all the required operations for obtaining, renewing, and using SSL/TLS certificates. Cert-Manager can talk with various certificate authorities (CAs), like [Let's Encrypt](https://letsencrypt.org), [HashiCorp Vault](https://www.vaultproject.io), and [Venafi](https://www.venafi.com). It can also automatically issue valid certificates for you and renew them before they expire.
 
-SSL/TLS certificates secure your connections and data by verifying the identity of hosts/sites and encrypting your data. Cert-Manager manages them by integrating with your Kubernetes cluster's Ingress Controller, which is your cluster's main entry point and sits in front of its backend services. Then, you can provide identity information to users by presenting them a valid SSL/TLS certificate whenever they visit your website(s).
+SSL/TLS certificates secure your connections and data by verifying the identity of hosts/sites and encrypting your data. Cert-Manager manages them by integrating with your Kubernetes cluster's Ingress Controller, which is the main entry point for your backend services. Then, you can provide identity information to users by presenting them a valid SSL/TLS certificate whenever they visit your website(s).
 
-This blueprint configures Knative Serving to work with Cert-Manager, and enables automatic creation and renewal of TLS certificates for each Knative Service. The Knative component providing the auto TLS features is called [net-certmanager](https://github.com/knative-sandbox/net-certmanager), and it's a separate project developed by Knative.
+This blueprint configures Knative Serving to work with Cert-Manager and enables automatic creation and renewal of TLS certificates for each Knative Service. The Knative component providing the auto TLS integration is called [net-certmanager](https://github.com/knative-sandbox/net-certmanager), and it's a separate project developed by Knative.
 
-Cert-Manager relies on several CRDs to do its work and obtain the final TLS certificates for your domain. Most important ones are:
+Cert-Manager relies on several CRDs to fetch TLS certificates for your domain, such as:
 
 - [Issuer](https://cert-manager.io/docs/concepts/issuer): Defines a `namespaced` certificate issuer, allowing you to use `different CAs` in each `namespace`.
 - [ClusterIssuer](https://cert-manager.io/docs/concepts/issuer): Similar to `Issuer`, but it doesn't belong to a namespace, hence can be used to `issue` certificates in `any namespace`.
 - [Certificate](https://cert-manager.io/docs/concepts/certificate): Defines a `namespaced` resource that references an `Issuer` or `ClusterIssuer` for issuing certificates.
 
-In this blueprint, you will make use of the cluster based issuer (`ClusterIssuer`) provided by Cert-Manager to enable TLS termination for the default Knative Ingress Controller (`Kourier`). Next, the `net-certmanager` component of Knative takes care of managing the TLS certificates automatically for you via the `ClusterIssuer` resource.
+In this blueprint, you will a cluster based issuer (`ClusterIssuer`) resource to enable TLS termination for your Knative services. Next, `net-certmanager` takes care of managing TLS certificates automatically for you, via the `ClusterIssuer` resource.
 
 For more information about Cert-Manager and its features, please visit the [official documentation website](https://cert-manager.io/docs).
 
-Next, you will install each software component required by this guide using the DigitalOcean marketplace collection of 1-click apps for Kubernetes.
+Next, you will install each software component required by this guide using the [DigitalOcean Marketplace](https://marketplace.digitalocean.com) collection of 1-click apps for Kubernetes.
 
 ## Step 1 - Installing Cert-Manager
 
@@ -420,7 +432,7 @@ After finishing the UI wizard, you should see the new application listed in the 
 
 Finally, check if the installation was successful by following the [Getting started after deploying Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) section from the Cert-Manager 1-click app documentation page.
 
-Next, you will install `Tekton` 1-click app using the DigitalOcean marketplace.
+Next, you will start provisioning `Tekton Pipelines` on your Kubernetes cluster using the [DigitalOcean Marketplace](https://marketplace.digitalocean.com).
 
 ## Step 2 - Installing Tekton
 
@@ -430,8 +442,6 @@ Tekton installation is divided in two parts:
 2. [Tekton Triggers](https://github.com/tektoncd/triggers) - additional component providing support for triggering pipelines whenever events emitted by various sources (such as GitHub) are detected.
 
 Tekton Pipelines is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/tekton-pipelines) from the DigitalOcean Marketplace. On the other hand, Tekton triggers is not at this time of writing, so it will be installed using `kubectl`.
-
-Next, you will start by provisioning `Tekton Pipelines` on your Kubernetes cluster via the [DigitalOcean Marketplace](https://marketplace.digitalocean.com).
 
 ### Provisioning Tekton Pipelines
 
@@ -449,7 +459,7 @@ Next, you will continue with provisioning `Tekton Triggers` on your Kubernetes c
 
 ### Provisioning Tekton Triggers
 
-Tekton Triggers is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://tekton.dev/docs/triggers/install/#installing-tekton-triggers-on-your-cluster). Please run below commands to install Tekton Triggers and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.19.1](https://github.com/tektoncd/triggers/releases/tag/v0.19.1)):
+[Tekton Triggers](https://github.com/tektoncd/triggers) is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://tekton.dev/docs/triggers/install/#installing-tekton-triggers-on-your-cluster). Please run below commands to install Tekton Triggers and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.19.1](https://github.com/tektoncd/triggers/releases/tag/v0.19.1)):
 
 ```shell
 kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.19.1/release.yaml
@@ -493,7 +503,7 @@ Next, you will continue with provisioning `Tekton Dashboard` on your Kubernetes 
 
 ### Provisioning Tekton Dashboard
 
-Tekton Dashboard is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://github.com/tektoncd/dashboard/blob/main/docs/install.md). Please run below commands to install Tekton Dahsboard and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.25.0](https://github.com/tektoncd/dashboard/releases/tag/v0.25.0)):
+[Tekton Dashboard](https://github.com/tektoncd/dashboard) is not available as a 1-click application yet, so it will be installed using `kubectl` as recommended in the [official installation page](https://github.com/tektoncd/dashboard/blob/main/docs/install.md). Please run below commands to install Tekton Dahsboard and dependencies using `kubectl` (latest stable version available at this time of writing is [v0.25.0](https://github.com/tektoncd/dashboard/releases/tag/v0.25.0)):
 
 ```shell
 kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/previous/v0.25.0/tekton-dashboard-release.yaml
@@ -554,11 +564,11 @@ Finally, open a web browser and navigate to [localhost:9097](http://localhost:90
 
 ![Tekton Dashboard Welcome Page](assets/images/tekton_dashboard_welcome_page.png)
 
-Next, you will install Argo CD 1-click app using the DigitalOcean marketplace.
+You can go ahead and explore each section from the left menu, and see what options are available. Next, you will install the Argo CD 1-click app using the DigitalOcean marketplace.
 
 ## Step 3 - Installing Argo CD
 
-Argo CD is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/argocd) from the DigitalOcean Marketplace. To install Argo CD please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/argocd) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
+[Argo CD](https://argoproj.github.io/cd) is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/argocd) from the DigitalOcean Marketplace. To install Argo CD please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/argocd) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
 
 ![Argo CD 1-click App Install](assets/images/argocd_1-click_app_install.png)
 
@@ -568,11 +578,11 @@ After finishing the UI wizard, you should see the new application listed in the 
 
 Finally, check if the installation was successful by following the [Getting started after deploying Argo CD](https://marketplace.digitalocean.com/apps/argocd) section from the Argo CD 1-click app documentation page.
 
-Next, you will install `Knative` 1-click app using the DigitalOcean marketplace.
+Next, you will install the `Knative` 1-click app using the DigitalOcean marketplace.
 
 ## Step 4 - Installing Knative
 
-Knative is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean Marketplace. To install Knative please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
+[Knative](https://knative.dev) is available and ready to install as a [1-click Kubernetes application](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean Marketplace. To install Knative please navigate to the [1-click application link](https://marketplace.digitalocean.com/apps/knative) from the DigitalOcean marketplace. Then, click on the `Install App` button from the right side, and follow the instructions:
 
 ![Knative 1-click App Install](assets/images/knative_1-click_app_install.png)
 
@@ -584,73 +594,11 @@ Finally, check if the installation was successful by following the [Getting star
 
 **Important note:**
 
-The Knative 1-click app installs both `Knative Serving` and `Eventing` components in your DOKS cluster.
+The Knative 1-click app installs both `Knative Serving` and `Eventing` components in your DOKS cluster, via the [Knative Operator](https://knative.dev/docs/install/operator/knative-with-operators).
 
-Next, you will prepare the sample application repository used in this tutorial, as well as a DigitalOcean Docker registry for storing application images. You will also create a dedicated Kubernetes namespace, to keep everything clean and organized.
+Next, you will prepare the sample application repository used in this tutorial, as well as the [DigitalOcean Docker Registry](https://www.digitalocean.com/products/container-registry) used for storing application images. You will also create a dedicated Kubernetes namespace, to keep everything clean and well organized.
 
-## Step 5 - Preparing the Sample Application Requirements
-
-Before continuing with the main tutorial, a few preparation steps are required detailed below.
-
-### Forking the Sample Application Repo
-
-In order to test the CI/CD flow on your end, you need to fork the [tekton-sample-app](https://github.com/v-ctiutiu/tekton-sample-app) repository used in this tutorial first. Also a GitHub personal access token (or PAT) must be created with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe, because you will need it later.
-
-### Creating a DigitalOcean Docker Registry
-
-A DigitalOcean [Docker Registry](https://docs.digitalocean.com/products/container-registry) repository is required for storing the sample application images. Please follow the DigitalOcean [quickstart guide](https://docs.digitalocean.com/products/container-registry/quickstart) to create one. A free plan is enough to complete this guide.
-
-You can also run below command to provision a new registry, via `doctl`:
-
-```shell
-doctl registry create tekton-ci \
-  --region nyc3 \
-  --subscription-tier starter
-```
-
-After completion, you should have a new private docker registry created. Verify that the docker registry was created successfully:
-
-```shell
-doctl registry get tekton-ci
-```
-
-The output looks similar to:
-
-```text
-Name         Endpoint                               Region slug
-tekton-ci    registry.digitalocean.com/tekton-ci    nyc3
-```
-
-As a final step, you also need to configure your DOKS cluster to be able to pull images from your private registry. DigitalOcean provides an easy way of accomplishing this task, via the UI. Please navigate to your Docker registry `Settings` tab from your DigitalOcean account. Then, click on the `Edit` button from the `DigitalOcean Kubernetes Integration` section. Finally, tick the appropriate checkbox, and press the `Save` button:
-
-![DigitalOcean Kubernetes Integration](assets/images/docr-k8s-integration.png)
-
-### Creating a Dedicated Namespaces for Kubernetes Resources
-
-It's best practice in general to have a dedicated namespace when provisioning new stuff in your Kubernetes cluster. This approach helps you keep everything organized. On the other hand, you can easily clean up everything later on, if desired.
-
-This tutorial is using the `doks-ci-cd` namespace as a reference, so please run below command to create it:
-
-```shell
-kubectl create ns doks-ci-cd
-```
-
-Check if the namespace is successfully created:
-
-```shell
-kubectl get ns doks-ci-cd
-```
-
-The output looks similar to:
-
-```text
-NAME         STATUS   AGE
-doks-ci-cd   Active   13m
-```
-
-Next, you will prepare each component of Knative (Serving and Eventing) to work in conjunction with Tekton Pipelines, and trigger the CI automation on GitHub events (e.g. push). The preparation steps will also teach you how to expose and enable TLS termination for all your Knative applications.
-
-## Step 6 - Configuring Knative Serving
+## Step 5 - Configuring Knative Serving
 
 In this step, you will learn how to prepare a domain you own to work with Knative Services. Then, you will learn how to configure Knative Serving to use your custom domain, and enable automatic TLS termination for all Knative services. It's best practice in general, to enable TLS termination for all application endpoints exposed publicly.
 
@@ -738,16 +686,16 @@ ID           Type    Name           Data                    Priority    Port    
 
 ### Configuring a Custom Domain and Auto TLS Feature for Knative Services
 
-Knative is able to enable TLS termination automatically for all your services (existing or new ones), and automatically fetch or renew TLS certificates from [Let's Encrypt](https://letsencrypt.org). This feature is provided via [cert-manager](https://cert-manager.io) and a special component (or adapter) named [net-certmanager](https://github.com/knative-sandbox/net-certmanager). You can also configure Knative to use a custom domain you own, and expose services to the outside world.
+Knative is able to enable TLS termination automatically for all your services (existing or new ones), and automatically fetch or renew TLS certificates from [Let's Encrypt](https://letsencrypt.org). This feature is provided via [cert-manager](https://cert-manager.io) and a special component (or adapter) named [net-certmanager](https://github.com/knative-sandbox/net-certmanager). You can also configure Knative to use a custom domain you own, and let users access your services via your domain.
 
-To summarize, the following steps are required to configure your own domain, and enable the auto TLS feature for Knative Services:
+To summarize, the following steps are required to configure Knative Serving to use your domain, and enable the auto TLS feature:
 
-1. Create a `ClusterIssuer` resource - main role is to issue certificates from Let's Encrypt.
+1. Create a `ClusterIssuer` resource - main role is to issue certificates from [Let's Encrypt](https://letsencrypt.org).
 2. Install the `net-certmanager` controller - main role is to act as a bridge (or adapter) between Cert-Manager and Knative Serving, for automatic issuing of certificates.
-3. Configure `KnativeServing` component via the `Knative Operator` to:
-    - Use a dedicated domain that you own (this step assumes that you already have a valid domain and it's registered with DO, as explained in [Configuring DigitalOcean Domain Records for Knative Services](#configuring-digitalocean-domain-records-for-knative-services) section from this blueprint).
+3. Configure [Knative Serving](https://knative.dev/docs/install/operator/configuring-serving-cr) component via the `Knative Operator` to:
+    - Use a dedicated domain that you own (this step assumes that you already have a valid domain and it's registered with DigitalOcean, as explained in [Configuring DigitalOcean Domain Records for Knative Services](#configuring-digitalocean-domain-records-for-knative-services) section from this blueprint).
     - Use the `ClusterIssuer` resource to automatically issue/renew certificates for each service.
-    - Enable the `auto TLS` feature (via a special flag called `auto-tls`).
+    - Enable the `auto TLS` feature, via a special flag called `auto-tls`.
 
 First, you need to create a [ClusterIssuer](https://cert-manager.io/docs/concepts/issuer) CRD for cert-manager. This blueprint provides a ready to use manifest which can be installed using `kubectl`:
 
@@ -779,13 +727,13 @@ Next, clone the `container-blueprints` repo:
 git clone https://github.com/digitalocean/container-blueprints.git
 ```
 
-Now, change directory to your local copy and apply the Knative ClusterIssuer manifest using `kubectl`:
+Now, change directory to your local copy, and apply the Knative ClusterIssuer manifest using `kubectl`:
 
 ```shell
-kubectl apply -f DOKS-CI-CD/assets/manifests/knative-serving/kn-cluster-issuer.yaml
+kubectl apply -f DOKS-CI-CD/assets/manifests/knative-serving/resources/kn-cluster-issuer.yaml
 ```
 
-Check the ClusterIssuer state:
+Check the `ClusterIssuer` state:
 
 ```shell
 kubectl get clusterissuer kn-letsencrypt-http01-issuer
@@ -819,16 +767,16 @@ spec:
     - URL: https://github.com/knative/net-certmanager/releases/download/knative-v1.4.0/release.yaml
 ```
 
-You don't have to apply the above manifest by hand, because everything is handled via `Kustomize` in this repository (including enabling the auto TLS feature for Knative Services).
+You don't have to apply the above manifest by hand, because everything is handled via [Kustomize](https://kustomize.io) in this repository (including enabling the auto TLS feature for Knative Services).
 
-What Kustomize does in this blueprint (via [kustomization](assets/manifests/knative-serving/kustomization.yaml)), is to take the original [KnativeServing configuration](https://github.com/digitalocean/marketplace-kubernetes/blob/master/stacks/knative/assets/manifests/knative-serving.yaml) from the DigitalOcean marketplace GitHub repository of Kubernetes 1-click apps, and apply a set of patches for each feature that is needed. This way, you don't have to touch the original file, or keep a copy of it somewhere with your own changes. Kustomize empowers you to use the original file as a base, and apply a set of patches on the fly (very powerful).
+What Kustomize does in this blueprint (via the [kustomization](assets/manifests/knative-serving/kustomization.yaml) manifest), is to take the original [KnativeServing configuration](https://github.com/digitalocean/marketplace-kubernetes/blob/master/stacks/knative/assets/manifests/knative-serving.yaml) from the DigitalOcean marketplace GitHub repository, and apply a set of patches for each feature that is needed. This way, you don't have to touch the original file, or keep a copy of it somewhere with your own changes. Kustomize empowers you to use the original file as a base, and apply a set of patches on the fly (very powerful).
 
-Each patch file is listed below (explanations provided inline):
+Each patch file and purpose is listed below:
 
 - [net-certmanager-install](assets/manifests/knative-serving/patches/net-certmanager-install.yaml) - installs `net-certmananger` component via the Knative Operator.
-- [certmanager-config](assets/manifests/knative-serving/patches/certmanager-config.yaml) - configures Knative Serving to use the ClusterIssuer created earlier to automatically issue TLS certificates from Let's Encrypt.
-- [domain-config](assets/manifests/knative-serving/patches/domain-config.yaml) - configures Knative Serving to use your own domain when exposing services.
-- [network-config](assets/manifests/knative-serving/patches/network-config.yaml) - configures Knative Serving to enable the auto TLS feature for services, via the `auto-tls` flag.
+- [certmanager-config](assets/manifests/knative-serving/patches/certmanager-config.yaml) - configures `Knative Serving` to use the `ClusterIssuer` created earlier to automatically issue TLS certificates from [Let's Encrypt](https://letsencrypt.org).
+- [domain-config](assets/manifests/knative-serving/patches/domain-config.yaml) - configures `Knative Serving` to use your custom `domain` when exposing services.
+- [network-config](assets/manifests/knative-serving/patches/network-config.yaml) - configures `Knative Serving` to enable the `auto TLS` feature for `Knative Services`, via the `auto-tls` flag.
 
 Follow below steps to apply all required changes for the Knative Serving component, via Kustomize:
 
@@ -877,7 +825,7 @@ NAME     URL                                          LATEST          AGE   COND
 hello    https://hello.doks-ci-cd.starter-kit.online  hello-world     31m   3 OK / 3     True    
 ```
 
-The hello world service endpoint should be in a healthy state (`READY` column set to `True`). Also, the service endpoint should be HTTPS enabled (`URL` column value), and use your custom domain name. You can also open a web browser and navigate to the service endpoint - a `Hello World!` message should be displayed.
+The hello world service endpoint should be in a healthy state (`READY` column set to `True`). Also, the service endpoint should be HTTPS enabled (`URL` column value), and use your custom domain name. You can also open a web browser, and navigate to the service endpoint - a `Hello World!` message should be displayed.
 
 **Important Notes:**
 
@@ -887,9 +835,9 @@ The hello world service endpoint should be in a healthy state (`READY` column se
 
 ### Knative Private Services
 
-What if you don't want to publicly expose a Knative service ? Maybe it has some security implications, or it's not ready to be consumed by the public.
+What if you don't want to publicly expose a Knative service ? Maybe it has some security implications, or it's not ready yet to be consumed by users.
 
-By default, Knative will try to expose all your services to the outside world, if a valid domain is configured. You can use the [Knative Private Services](https://knative.dev/docs/serving/services/private-services) feature for services that you don't want to make public. To make a Knative service private, you need to add a special label in the manifest: `networking.knative.dev/visibility: cluster-local`.
+By default, Knative will configure all services with a public endpoint, if a valid domain is configured. You can use the [Knative Private Services](https://knative.dev/docs/serving/services/private-services) feature for services that you don't want to make public. To make a Knative service private, you need to add a special label in the manifest, named `networking.knative.dev/visibility: cluster-local`.
 
 Below YAML snippet shows a complete example:
 
@@ -925,16 +873,16 @@ Looking at the above output, you will notice that the `github-message-dumper` se
 
 Next, you will configure Knative Eventing to respond to GitHub events, and finally trigger the Tekton CI/CD pipeline.
 
-## Step 7 - Configuring Knative Eventing
+## Step 6 - Configuring Knative Eventing
 
 Knative has a very powerful eventing system builtin. Tekton has some primitives builtin to react on external events, such as the [EventListener](https://tekton.dev/docs/triggers/eventlisteners). But, because Knative Eventing is already installed, why not benefit from it? It is far more advanced and flexible than what Tekton has to offer. On the other hand, it's also a very good exercise to discover and test the Knative Eventing component.
 
 Before continuing, it's important to understand some important Knative Eventing concepts used in this guide:
 
-1. [Sources](https://knative.dev/docs/eventing/sources) - main purpose is to define (create) event producers. In this tutorial the [GitHubSource](https://github.com/knative-sandbox/eventing-github) type is used as a producer of GitHub events. When working with GitHubSources, you can also filter and react on specific events (such as `push` events, for example). It can also manage webhooks for you automatically via the GitHub API (a personal access token must be provided with the appropriate permissions).
+1. [Sources](https://knative.dev/docs/eventing/sources) - main purpose is to define (create) event producers. In this tutorial the [GitHubSource](https://github.com/knative-sandbox/eventing-github) type is used as a producer of GitHub events. When working with `GitHubSources`, you can also filter and react on specific events (such as `push` events, for example). It can also manage webhooks for you automatically via the [GitHub API](https://docs.github.com/en/rest) (a personal access token must be provided with the appropriate permissions).
 2. Event delivery mechanisms, such as [Simple Delivery](https://knative.tips/eventing/delivery-methods/simple-delivery/), [Complex Delivery](https://knative.tips/eventing/delivery-methods/complex-delivery/).
 
-This guide is using a simple delivery mechanism, where a GitHubSource filters and fires the Tekton CI/CD pipeline EventListener on push events. The GitHubSource component is available via the [eventing-github](https://github.com/knative-sandbox/eventing-github) Knative project. The official version doesn't support Kubernetes v1.22 and up at this time of writing (there is a [open PR](https://github.com/knative-sandbox/eventing-github/pull/229) to address this issue). This repository provides a functional [github-eventing-v1.4.0](assets/manifests/knative-eventing/github-eventing-v1.4.0.yaml) manifest that you can use (based on the fixes from the original PR).
+This guide is using a `simple delivery mechanism`, where a GitHubSource filters and fires the Tekton CI/CD pipeline EventListener on push events. The GitHubSource component is available via the [eventing-github](https://github.com/knative-sandbox/eventing-github) Knative project. The official version doesn't support Kubernetes v1.22 and up at this time of writing (there is a [open PR](https://github.com/knative-sandbox/eventing-github/pull/229) to address this issue). This repository provides a functional [github-eventing-v1.4.0](assets/manifests/knative-eventing/github-eventing-v1.4.0.yaml) manifest that you can use (based on the fixes from the original PR).
 
 Please follow below steps to install `github-eventing` in your cluster:
 
@@ -970,9 +918,9 @@ github-controller-manager-0       1/1     Running   0          21h
 github-webhook-6cdcfc69ff-2q4sn   1/1     Running   0          21h
 ```
 
-The `github-controller` and `github-webhook` pods should be in a `Running` state. The `github-controller` pod is responsible with reconciling your `GitHubSource` resources. The `github-webhook` pod manages webhooks for your GitHub repository, as defined in the GitHubSource CRD.
+The `github-controller` and `github-webhook` pods should be in a `Running` state. The `github-controller` pod is responsible with reconciling your `GitHubSource` CRDs. The `github-webhook` pod manages webhooks for your GitHub repository, as defined by the GitHubSource CRD.
 
-Each time you create a GitHubSource resource, a corresponding Knative Service is created as well. The Knative Service exposes a public endpoint, and gets registered as a webhook in your GitHub repository by the github-eventing component. Then, each time a GitHub event is fired, the Knative Service created by your GitHubSource resource is triggered, and notifies the Tekton EventListener. This approach has other benefits such as letting Knative Serving to take care of creating endpoints for services, and automatically provide TLS support.
+Each time you create a GitHubSource resource, a corresponding Knative Service is created as well. The Knative Service exposes a public endpoint, and gets registered as a webhook in your GitHub repository by the github-eventing component. Then, each time a GitHub event is fired, the Knative Service created by your GitHubSource resource is triggered, and notifies the Tekton EventListener. This approach has other benefits, such as letting Knative Serving to take care of creating endpoints for your webhooks, and automatically provide TLS support.
 
 Following diagram illustrates the setup used in this guide, and all involved components:
 
@@ -980,12 +928,12 @@ Following diagram illustrates the setup used in this guide, and all involved com
 
 Possibilities are limitless when using Knative Eventing. For example, you can replace the simple delivery mechanism with a complex delivery one that uses channels or brokers. Then, you can have multiple subscribers responding to all kind of events. For example, you can have a dedicated setup where based on the type of event that gets fired, a different Tekton Pipeline is triggered, such as:
 
-1. When a PR is opened, you would have a subscriber that triggers a dedicated pipelines which runs only application tests, and validates the PR.
-2. When code is pushed to the main branch, you would have a subscriber that triggers the standard CI/CD pipeline.
+1. When a PR is opened, a specific subscriber gets notified, and triggers a dedicated pipeline which runs only application tests (thus validating PRs).
+2. When code is merged in the main (or development) branch, another subscriber gets notified, and triggers a dedicated CI/CD pipeline.
 
 **Note:**
 
-Tekton knows how to filter events as well, via [Interceptors](https://tekton.dev/vault/triggers-main/interceptors). The main idea used in this tutorial is to show you another way of processing events and triggering Tekton pipelines by using Knative Eventing.
+Tekton EventListeners know how to filter events as well, via [Interceptors](https://tekton.dev/vault/triggers-main/interceptors). The main idea used in this tutorial is to show you another way of processing events, and triggering Tekton pipelines by using Knative Eventing.
 
 Typical GitHubSource CRD definition looks like below:
 
@@ -1018,6 +966,77 @@ Explanations for the above configuration:
 - `spec.sink` - specifies a destination for events, such as a Kubernetes service URI, or a Knative Service.
 
 Next, you will configure and test the CI/CD pipeline for a sample application (the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game))), using Tekton Pipelines and Argo CD. You will also learn how to automatically trigger the pipeline on GitHub events (e.g. when pushing commits), using Knative GitHubSource and Tekton EventListeners.
+
+## Step 7 - Preparing the Sample Application Requirements
+
+Before continuing with the main tutorial, a few preparation steps are required such as:
+
+1. Forking the sample application repository used in this guide.
+2. Provisioning a DigitalOcean docker registry to store the sample application images.
+3. Creating a dedicated Kubernetes namespace to store all custom resources used in this tutorial.
+
+### Forking the Sample Application Repo
+
+To test the Tekton CI/CD flow presented in this blueprint, you need to fork the [tekton-sample-app](https://github.com/v-ctiutiu/tekton-sample-app) repository first. Also a GitHub personal access token (or PAT) must be created with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe, because you will need them later.
+
+### Creating a DigitalOcean Docker Registry
+
+A DigitalOcean [Docker Registry](https://docs.digitalocean.com/products/container-registry) repository is required for storing the sample application images. Please follow the DigitalOcean [quickstart guide](https://docs.digitalocean.com/products/container-registry/quickstart) to create one. A free plan is enough to complete this guide.
+
+You can also run below command to provision a new registry, via `doctl`:
+
+```shell
+doctl registry create tekton-ci \
+  --region nyc3 \
+  --subscription-tier starter
+```
+
+Explanations for the above command:
+
+- `--region` - region name where the registry is going to be provisioned (you can list all the available regions via the `doctl registry options available-regions` command).
+- `--subscription-tier` - subscription tier to use (you can list all the available tiers via the `doctl registry options subscription-tiers` command).
+
+After completion, you should have a new private docker registry created. Verify that the docker registry was created successfully:
+
+```shell
+doctl registry get tekton-ci
+```
+
+The output looks similar to:
+
+```text
+Name         Endpoint                               Region slug
+tekton-ci    registry.digitalocean.com/tekton-ci    nyc3
+```
+
+As a final step, you also need to configure your DOKS cluster to be able to pull images from your private registry. DigitalOcean provides an easy way of accomplishing this task, via the UI. First, please navigate to your Docker registry `Settings` tab from your DigitalOcean account. Then, click on the `Edit` button from the `DigitalOcean Kubernetes Integration` section. Finally, tick the appropriate checkbox, and press the `Save` button:
+
+![DigitalOcean Kubernetes Integration](assets/images/docr-k8s-integration.png)
+
+### Creating a Dedicated Namespaces for Kubernetes Resources
+
+It's best practice in general to have a dedicated namespace when provisioning new stuff in your Kubernetes cluster. This approach helps you keep everything organized. On the other hand, you can easily clean up everything later on, if desired.
+
+This tutorial is using the `doks-ci-cd` namespace as a reference, so please run below command to create it:
+
+```shell
+kubectl create ns doks-ci-cd
+```
+
+Check if the namespace is successfully created:
+
+```shell
+kubectl get ns doks-ci-cd
+```
+
+The output looks similar to:
+
+```text
+NAME         STATUS   AGE
+doks-ci-cd   Active   13m
+```
+
+Next, you will prepare each component of Knative (Serving and Eventing) to work in conjunction with Tekton Pipelines, and trigger the CI automation on GitHub events (e.g. push). The preparation steps will also teach you how to expose and enable TLS termination for all your Knative services.
 
 ## Step 8 - Setting Up Your First CI/CD Pipeline Using Tekton and Argo CD
 
@@ -1202,13 +1221,13 @@ tkn eventlistener list -n doks-ci-cd
 
 To test the whole CI/CD setup, you need to push some changes to the `tekton-sample-app` repository prepared in the [Forking the Sample Application Repo](#forking-the-sample-application-repo) step.
 
-Next, port-forward the tekton dashboard:
+First, port-forward the tekton dashboard service:
 
 ```shell
 kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9097:9097
 ```
 
-Now, open your web browser and go to [localhost:9097](http://localhost:9097). Then, navigate to PipelineRuns - you should see your CI/CD pipeline status:
+Now, launch your web browser and access [localhost:9097](http://localhost:9097). Then, navigate to PipelineRuns - you should see your CI/CD pipeline status:
 
 ![alt](assets/images/tkn_pipeline_run_listing.png)
 
@@ -1218,7 +1237,7 @@ If you click on it, you should see each Task execution status, and logs:
 
 **Note:**
 
-Initially, you may have a failed pipeline run present as well. When the webhook is created for the first time, GitHub sends a specific payload to test your GitHubSource endpoint and see if it responds to requests. The test payload content is not valid for the Tekton pipeline, hence the issue.
+Initially, you may get a failed pipeline run present as well. When the webhook is created for the first time, GitHub sends a specific payload to test your GitHubSource endpoint and see if it responds to requests. The test payload content is not valid for the Tekton pipeline, hence the issue.
 
 ## Conclusion
 

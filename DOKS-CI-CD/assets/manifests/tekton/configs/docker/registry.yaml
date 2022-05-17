@@ -1,0 +1,6 @@
+# Used to replace the Docker registry name from the `TektonTriggerTemplate` CRD input parameters
+# Path: DOKS-CI-CD/assets/manifests/tekton/triggers/tekton-argocd-build-deploy-trigger-template.yaml
+
+- op: replace
+  path: /spec/params/3/default
+  value: <YOUR_DOCKER_REGISTRY_NAME_HERE>

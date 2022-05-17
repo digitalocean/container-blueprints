@@ -9,8 +9,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Make sure all resources used in this tutorial go in a dedicated namespace
-# Also specific labels and annotations are added for identification
+# Making sure all resources used in this tutorial are created in a dedicated namespace
+# Also specific labels and annotations are added for later identification
 namespace: doks-ci-cd
 commonAnnotations:
   provider: container-blueprints
@@ -37,9 +37,26 @@ resources:
   # - eventing/tekton-ci-channel.yaml
   # - eventing/tekton-ci-channel-subscribers.yaml
 
+# Patching the required resources used in this tutorial based on user settings, such as:
+# - GitHub owner and repository
+# - Docker registry name
 patches:
-  - configs/github/githubsource_patch.yaml
+  # Patches GitHubSource CRD to point to user GitHub repo
+  - path: configs/github/githubsource.yaml
+    target:
+      group: sources.knative.dev
+      version: v1alpha1
+      kind: GitHubSource
+      name: tekton-ci-cd-github-source
+  # Patches TriggerTemplate CRD to point to user DO Docker registry
+  - path: configs/docker/registry.yaml
+    target:
+      group: triggers.tekton.dev
+      version: v1beta1
+      kind: TriggerTemplate
+      name: tekton-argocd-build-deploy-trigger-template
 
+# Disabling name suffix for Kubernetes ConfigMaps and Secrets generated via Kustomize
 generatorOptions:
   disableNameSuffixHash: true
 

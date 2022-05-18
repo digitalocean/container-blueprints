@@ -1,0 +1,6 @@
+# `InMemoryChannel` CRD - defines a channel of In-Memory type
+
+apiVersion: messaging.knative.dev/v1
+kind: InMemoryChannel
+metadata:
+  name: tekton-ci-channel

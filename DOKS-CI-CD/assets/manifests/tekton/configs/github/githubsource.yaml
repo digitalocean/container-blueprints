@@ -1,0 +1,6 @@
+# Used to replace the GitHub owner and repository in the GitHubSource CRD
+# Path: DOKS-CI-CD/assets/manifests/tekton/eventing/tekton-ci-cd-github-source.yaml
+
+- op: replace
+  path: /spec/ownerAndRepository
+  value: <YOUR_GITHUB_USER_NAME_HERE>/tekton-sample-app

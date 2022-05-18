@@ -1,0 +1,21 @@
+apiVersion: sources.knative.dev/v1alpha1
+kind: GitHubSource
+metadata:
+  name: tekton-ci-gh-source
+spec:
+  eventTypes:
+    - push
+  ownerAndRepository: mtiutiu-heits/do-gitops-testing
+  accessToken:
+    secretKeyRef:
+      name: github-pat
+      key: accessToken
+  secretToken:
+    secretKeyRef:
+      name: github-pat
+      key: secretToken
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: github-message-dumper

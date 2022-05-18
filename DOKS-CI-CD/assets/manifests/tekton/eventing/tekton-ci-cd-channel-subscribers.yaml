@@ -1,0 +1,16 @@
+# `Subscription` CRD - defines a subscription for a specific channel
+
+apiVersion: messaging.knative.dev/v1
+kind: Subscription
+metadata:
+  name: tekton-argocd-build-deploy-subscription
+spec:
+  # Defines the channel used for subscriptions
+  channel:
+    apiVersion: messaging.knative.dev/v1
+    kind: InMemoryChannel
+    name: tekton-ci-channel
+  subscriber:
+    # subscribe a service by URI
+    # Kubernetes classic services are also accepted, but must have an endpoint listening on port 80
+    uri: http://el-tekton-argocd-build-deploy-event-listener.default.svc.cluster.local:8080

@@ -1,0 +1,79 @@
+# A `TriggerTemplate` specifies what PipelineResource to instantiate, via `spec.resourcetemplates`
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: tekton-argocd-build-deploy-trigger-template
+spec:
+  # List of input parameters for this TriggerTemplate (passed in by the EventListener and TriggerBinding)
+  # You can also define default values for parameters
+  params:
+    - name: git-url
+      description: The git repository url
+    - name: git-revision
+      description: The git revision
+      default: main
+    - name: application-name
+      description: The application name
+      default: 2048-game
+    - name: docker-registry-name
+      description: Docker registry name
+      default: tekton-ci
+    - name: path-to-image-context
+      description: Project build path context for docker
+      default: ./
+    - name: path-to-dockerfile
+      description: Path to project Dockerfile
+      default: ./Dockerfile
+    - name: k8s-resources-path
+      description: Path to project Kubernetes resources
+      default: resources
+    - name: k8s-dest-server
+      description: Targeted Kubernetes server
+      default: https://kubernetes.default.svc
+    - name: k8s-dest-namespace
+      description: Target Kubernetes namespace for the application
+      default: doks-ci-cd
+  # Resource templates define what Pipeline to instantiate and run via `PipelineRun`
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: tekton-argocd-build-deploy-pipeline-run-
+      spec:
+        # The Pipeline reference to use and instantiate
+        pipelineRef:
+          name: tekton-argocd-build-deploy-pipeline
+        # List of required input parameters for the Pipeline
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: application-name
+            value: $(tt.params.application-name)
+          - name: image-name
+            value: registry.digitalocean.com/$(tt.params.docker-registry-name)/$(tt.params.application-name)
+          - name: path-to-image-context
+            value: $(tt.params.path-to-image-context)
+          - name: path-to-dockerfile
+            value: $(tt.params.path-to-dockerfile)
+          - name: k8s-resources-path
+            value: $(tt.params.k8s-resources-path)
+          - name: k8s-dest-server
+            value: $(tt.params.k8s-dest-server)
+          - name: k8s-dest-namespace
+            value: $(tt.params.k8s-dest-namespace)
+        # List of workspace definitions used by the Pipeline (as well as associated PVCs)
+        workspaces:
+          - name: git-source
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
+          - name: docker-config
+            secret:
+              secretName: registry-tekton-ci

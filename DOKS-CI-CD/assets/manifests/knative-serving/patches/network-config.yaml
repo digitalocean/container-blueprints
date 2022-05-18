@@ -1,0 +1,11 @@
+apiVersion: operator.knative.dev/v1alpha1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+spec:
+  config:
+    network:
+      # Instruct Knative Serving to enable auto TLS
+      auto-tls: Enabled
+      http-protocol: Enabled

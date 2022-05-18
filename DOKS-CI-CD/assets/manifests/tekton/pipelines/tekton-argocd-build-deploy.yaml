@@ -1,0 +1,117 @@
+# `Pipeline` CRD - defines a Tekton Pipeline and associated Tasks
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: tekton-argocd-build-deploy-pipeline
+spec:
+  # List of input parameters used by this pipeline
+  # These parameters will be used by each pipeline task subsequently
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: application-name
+    - name: image-name
+    - name: path-to-image-context
+    - name: path-to-dockerfile
+    - name: k8s-resources-path
+    - name: k8s-dest-server
+    - name: k8s-dest-namespace
+  # Shared workspaces used by pipeline tasks
+  workspaces:
+    - name: git-source
+    - name: docker-config
+  # List of tasks performing actions inside this Pipeline
+  tasks:
+    #############################################################################
+    # Task: `fetch-from-git`
+    # Role:  Fetches application source code from the specified Git repository
+    # Parameters: 
+    #   - `url`: defines Git repository URL
+    #   - `revision`: defines Git revision to use
+    # Workspaces:
+    #   - `git-source`: used to store Git repository data
+    #############################################################################
+    - name: fetch-from-git
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: git-source
+    #############################################################################
+    # Task: `build-docker-image`
+    # Role: Builds the docker image for the application
+    # Parameters: 
+    #   - `IMAGE`: defines the docker image name
+    #   - `CONTEXT`: defines the Docker build context path (relative to workspace)
+    #   - `DOCKERFILE`: path to the Dockerfile inside the workspace
+    # Workspaces: 
+    #   - `git-source`: stores application code used to build the docker image
+    #   - `docker-config`: stores docker registry credentials to push the image
+    #############################################################################
+    - name: build-docker-image
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+        - name: CONTEXT
+          value: $(params.path-to-image-context)
+        - name: DOCKERFILE
+          value: $(params.path-to-dockerfile)
+      workspaces:
+        - name: source
+          workspace: git-source
+        - name: dockerconfig
+          workspace: docker-config
+    #############################################################################
+    # Task: `create-application`
+    # Role: Tells Argo CD to create a new application (if not present)
+    # Parameters: 
+    #   - `application-name`: the application name to sync
+    #   - `repo-url`: the repository URL hosting the application
+    #   - `resources-path`: path inside the repository for Kubernetes resources
+    #   - `dest-server`: targeted Kubernetes server
+    #   - `dest-namespace`: application target namespace 
+    #   - `flags`: extra flags passed to Argo CD
+    #############################################################################
+    - name: create-application
+      taskRef:
+        name: argocd-task-create-app
+      runAfter:
+        - build-docker-image
+      params:
+        - name: application-name
+          value: $(params.application-name)
+        - name: repo-url
+          value: $(params.git-url)
+        - name: resources-path
+          value: $(params.k8s-resources-path)
+        - name: dest-server
+          value: $(params.k8s-dest-server)
+        - name: dest-namespace
+          value: $(params.k8s-dest-namespace)
+        - name: flags
+          value: --insecure
+    #############################################################################
+    # Task: `sync-application`
+    # Role: Tells Argo CD to sync and wait for the application to be ready
+    # Parameters: 
+    #   - `application-name`: application name to sync
+    #   - `flags`: extra flags passed to Argo CD
+    #############################################################################
+    - name: sync-application
+      taskRef:
+        name: argocd-task-sync-and-wait
+      runAfter:
+        - create-application
+      params:
+        - name: application-name
+          value: $(params.application-name)
+        - name: flags
+          value: --insecure

@@ -765,25 +765,32 @@ Finally, you need to configure Grafana and Prometheus to visualise metrics expos
 
 ### Configuring the NitroPack Plugin
 
-A CDN is required to speed up the delivery of content while taking the load off of your web server and minimizing latency while hosting your WordPress static content such as images, CSS, JavaScript and video streams. You will next configure the [Nitropack](https://wordpress.org/plugins/nitropack/) plugin in your Wordpress application.
+Using a CDN can speed up content delivery by offloading your web server when serving static content such as images, CSS, JavaScript and video streams. Another benefit of caching static content is minimum latency. Next, you will configure the [Nitropack](https://wordpress.org/plugins/nitropack/) plugin for your Wordpress instance.
 
 **Note:**
-The wordpress admin password configured in the `values.yaml` of the Wordpress helm chart fails when attempting to log into WordPress admin. To change the password you need to connect to the the database and reset it. Follow this [article](https://docs.digitalocean.com/products/databases/mysql/how-to/connect/) on how to connect to a MySQL Database Cluster. Follow this [article](https://wordpress.org/support/article/resetting-your-password/) on how to change the password.
 
-Next you will configure the NitroPack plugin:
+The administrator password configured via the Wordpress Helm chart values file (values.yaml) fails when attempting to log into the Wordpress administrator console. To change the password, you need to connect to the the database and reset it. First, if you're not familiar with DigitalOcean managed databases, please read the [How to Connect to a MySQL Database Cluster](https://docs.digitalocean.com/products/databases/mysql/how-to/connect/) guide. Then, follow the [Resetting your Wordpress User Password](https://wordpress.org/support/article/resetting-your-password/) article from the Wordpress support website.
 
-1. Navigate to the admin section of your WordPress instalation by going to: <https://YOUR_WORDPRESS_DOMAIN_HERE/wp-admin> and login with your wordpress admin credentials.
-2. Click on the `Plugins` menu item and `Add New` sub-menu.
-3. Search for the `Nitropack` plugin and from the results page click on the `Install Now` button. After the installation is complete, click on the `Activate` button. You should now see the plugin added added to your list of plugins
-4. Click on the `Settings` link under the plugin name. From this page click on the `Connect to NitroPack` button. This will let you log in or create an account with NitroPack.
-5. The NitroPack.io dashboard page should be opened with information related to the plan, optimized pages etc.
+Please follow below steps to configure NitroPack plugin for your Wordpress instance:
 
-Next you need to connect your site to NitroPack by following thses steps:
+1. Open the administrator console of your WordPress installation, via following link in your web browser (make sure to replace the <> placeholders accordingly):
 
-1. Navigate to [NitroPack](https://nitropack.io/) and log in with the account you created when configuring the plugin
-2. Click on the `Add new website` menu item, add the `Website URL`, `Website name`, click on the `Free subscription` option and click on the `Proceed` button
-3. If your domain is hosted on Clouflare you will be prompted to connect your `Cloudflare` account with the `NitroPack` account
-4. You should be able to see the `Dashboard` with cache information for your WordPress installation
+      ```shell
+      https://<YOUR_WORDPRESS_DOMAIN_HERE>/wp-admin
+      ```
+
+    When asked, please login with your Wordpress admin credentials.
+2. Click on the `Plugins` menu item, and then open the `Add New` sub-menu.
+3. Search for the `Nitropack` plugin, and from the results page click on the `Install Now` button. After the installation is complete, click on the `Activate` button. You should see the plugin added to your list of plugins.
+4. Click on the `Settings` link under the plugin name. On the following page, click on the `Connect to NitroPack button`. Next, you will be redirected to log in or create a new account with NitroPack.
+5. The [NitroPack.io dashboard](https://nitropack.io/user/dashboard) page should be opened with information related to the plan, optimized pages etc.
+
+Next, please follow below steps to connect your site with NitroPack:
+
+1. Navigate to [NitroPack](https://nitropack.io/), and log in using the account you created when configuring the plugin.
+2. Click on the `Add new website` menu item, then fill the `Website URL`, and `Website name` with your data. Now, click on the `Free subscription` option, and then the `Proceed` button.
+3. If your domain is hosted on Clouflare you will be prompted to connect your `Cloudflare` account with the `NitroPack` account.
+4. You should be able to see the `Dashboard` with cache information for your WordPress installation.
 
 **Note:**
 You can also check this [article](https://support.nitropack.io/hc/en-us/articles/1500002328941-How-to-Check-if-NitroPack-is-Serving-Optimized-Pages-to-Visitors) on how to check if NitroPack is serving optimized pages to visitors.

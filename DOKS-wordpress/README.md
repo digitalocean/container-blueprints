@@ -742,7 +742,7 @@ metrics:
   enabled: true
 ```
 
-Apply changes using Helm:w
+Apply changes using Helm:
 
 ```console
 helm upgrade wordpress bitnami/wordpress \

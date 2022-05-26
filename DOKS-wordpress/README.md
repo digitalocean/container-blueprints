@@ -4,6 +4,8 @@
 
 In this tutorial, you will use Helm for setting up [WordPress](https://wordpress.com/) on top of a Kubernetes cluster, in order to create a highly-available website. In addition to leveraging the intrinsic scalability and high availability aspects of Kubernetes, this setup will help keeping WordPress secure by providing simplified upgrade and rollback workflows via Helm.
 
+You will be configuring [NitroPack](https://wordpress.org/plugins/nitropack/), a plugin used for code minification, caching, CDN and lazy loading.
+
 You will be using an external MySQL server in order to abstract the database component, since it can be part of a separate cluster or managed service for extended availability. After completing the steps described in this tutorial, you will have a fully functional WordPress installation within a containerized cluster environment managed by Kubernetes.
 
 ## WordPress Setup Diagram
@@ -26,7 +28,7 @@ You will be using an external MySQL server in order to abstract the database com
     - [Installing Cert-Manager](#installing-cert-manager)
     - [Configuring Production Ready TLS Certificates for WordPress](#configuring-production-ready-tls-certificates-for-wordpress)
   - [Enabling WordPress Monitoring Metrics](#enabling-wordpress-monitoring-metrics)
-  - [Configuring WordPress Plugins](#configuring-wordpress-plugins)
+  - [Configuring the NitroPack Plugin](#configuring-the-nitropack-plugin)
   - [Upgrading WordPress](#upgrading-wordpress)
 - [Conclusion](#conclusion)
 
@@ -740,7 +742,7 @@ metrics:
   enabled: true
 ```
 
-Apply changes using Helm:
+Apply changes using Helm:w
 
 ```console
 helm upgrade wordpress bitnami/wordpress \
@@ -761,25 +763,30 @@ Now, open a web browser and navigate to [localhost:9150/metrics](http://127.0.0.
 
 Finally, you need to configure Grafana and Prometheus to visualise metrics exposed by your new WordPress instance. Please visit [How to Install the Prometheus Monitoring Stack](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/04-setup-prometheus-stack) to learn more how to install and configure Grafana and Prometheus.
 
-### Configuring WordPress Plugins
+### Configuring the NitroPack Plugin
 
-Plugins are the building blocks of your WordPress site. They bring in important functions to your website, whether you need to add contact forms, improve SEO, increase site speed, create an online store, or offer email opt-ins. Whatever you need your website to do can be done with a plugin.
+A CDN is required to speed up the delivery of content while taking the load off of your web server and minimizing latency while hosting your WordPress static content such as images, CSS, JavaScript and video streams. You will next configure the [Nitropack](https://wordpress.org/plugins/nitropack/) plugin in your Wordpress application.
 
-Below you can find a list of recommended plugins:
+**Note:**
+The wordpress admin password configured in the `values.yaml` of the Wordpress helm chart fails when attempting to log into WordPress admin. To change the password you need to connect to the the database and reset it. Follow this [article](https://docs.digitalocean.com/products/databases/mysql/how-to/connect/) on how to connect to a MySQL Database Cluster. Follow this [article](https://wordpress.org/support/article/resetting-your-password/) on how to change the password.
 
-- [Contact Form by WPForms](https://wordpress.org/plugins/wpforms-lite/): allows you to create beautiful contact forms, feedback form, subscription forms, payment forms, and other types of forms for your site.
+Next you will configure the NitroPack plugin:
 
-- [MonsterInsights](https://wordpress.org/plugins/google-analytics-for-wordpress/): is the best Google Analytics plugin for WordPress. It allows you to “properly” connect your website with Google Analytics, so you can see exactly how people find and use your website.
+1. Navigate to the admin section of your WordPress instalation by going to: <https://YOUR_WORDPRESS_DOMAIN_HERE/wp-admin> and login with your wordpress admin credentials.
+2. Click on the `Plugins` menu item and `Add New` sub-menu.
+3. Search for the `Nitropack` plugin and from the results page click on the `Install Now` button. After the installation is complete, click on the `Activate` button. You should now see the plugin added added to your list of plugins
+4. Click on the `Settings` link under the plugin name. From this page click on the `Connect to NitroPack` button. This will let you log in or create an account with NitroPack.
+5. The NitroPack.io dashboard page should be opened with information related to the plan, optimized pages etc.
 
-- [All in One SEO](https://wordpress.org/plugins/all-in-one-seo-pack/): helps you get more visitors from search engines to your website. While WordPress is SEO friendly out of the box, there is so much more you can do to increase your website traffic using SEO best practices.
+Next you need to connect your site to NitroPack by following thses steps:
 
-- [SeedProd](https://wordpress.org/plugins/coming-soon/): is the best drag and drop page builder for WordPress. It allows you to easily customize your website design and create custom page layouts without writing any code.
+1. Navigate to [NitroPack](https://nitropack.io/) and log in with the account you created when configuring the plugin
+2. Click on the `Add new website` menu item, add the `Website URL`, `Website name`, click on the `Free subscription` option and click on the `Proceed` button
+3. If your domain is hosted on Clouflare you will be prompted to connect your `Cloudflare` account with the `NitroPack` account
+4. You should be able to see the `Dashboard` with cache information for your WordPress installation
 
-- [LiteSpeed Cache](https://wordpress.org/plugins/litespeed-cache/): is an all-in-one site acceleration plugin, featuring an exclusive server-level cache and a collection of optimization feature
-
-- [UpdraftPlus](https://wordpress.org/plugins/updraftplus/): simplifies backups and restoration.  Backup your files and database backups into the cloud and restore with a single click.
-
-Please visit <https://wordpress.org/plugins/> for more plugins
+**Note:**
+You can also check this [article](https://support.nitropack.io/hc/en-us/articles/1500002328941-How-to-Check-if-NitroPack-is-Serving-Optimized-Pages-to-Visitors) on how to check if NitroPack is serving optimized pages to visitors.
 
 ### Upgrading WordPress
 

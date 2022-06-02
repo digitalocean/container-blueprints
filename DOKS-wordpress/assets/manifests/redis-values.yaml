@@ -1,0 +1,15 @@
+master:
+  persistence:
+    enabled: true
+    storageClass: rwx-storage
+    accessModes: ["ReadWriteMany"]
+    size: 5Gi
+
+auth:
+  enabled: true
+  password: test1234
+  #password: <YOUR_REDIS_PASSWORD_HERE>
+  
+architecture: standalone
+
+

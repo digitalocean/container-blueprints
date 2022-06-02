@@ -7,8 +7,7 @@ master:
 
 auth:
   enabled: true
-  password: test1234
-  #password: <YOUR_REDIS_PASSWORD_HERE>
+  password: <YOUR_REDIS_PASSWORD_HERE>
   
 architecture: standalone
 

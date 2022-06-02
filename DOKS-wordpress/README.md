@@ -97,6 +97,7 @@ OpenEBS Dynamic NFS Provisioner allows users to create a NFS PV that sets up a n
 Please visit [OpenEBS](https://openebs.io/) for more details.
 
 Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). You will be installing and configuring only the dynamic nfs provisioner, since Wordpress requires it.
+An alternative way to install [OpenEBS NFS Provisioner](https://marketplace.digitalocean.com/apps/openebs-nfs-provisioner) is via the DigitalOcean 1-click apps platform.
 
 First, clone the `container-blueprints` repository. Then, change directory to your local copy and to the `DOKS-wordpress` subfolder:
 

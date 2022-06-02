@@ -69,6 +69,8 @@ doctl k8s cluster create <YOUR_CLUSTER_NAME> \
 
 ## Installing and configuring the OpenEBS Dynamic NFS Provisioner
 
+**This section explains how to install NFS provisioner using helm. If you want to use Digitalocean Kubernetes 1-click instead, skip this section and use [this to install NFS provisioner](https://marketplace.digitalocean.com/apps/openebs-nfs-provisioner) on your cluster.**
+
 A new [DigitalOcean Block Storage](https://docs.digitalocean.com/products/volumes/) volume is provisioned each time you use a [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) as part of your Kubernetes stateful application. The [StorageClass](https://kubernetes.io/docs/concepts/storage/storage-classes/) resource tells Kubernetes about the underlying storage type available. DigitalOcean is using [do-block-storage](https://github.com/digitalocean/csi-digitalocean) by default.
 
 Below command lists the available storage classes for your Kubernetes cluster:
@@ -97,7 +99,6 @@ OpenEBS Dynamic NFS Provisioner allows users to create a NFS PV that sets up a n
 Please visit [OpenEBS](https://openebs.io/) for more details.
 
 Next, you will install the OpenEBS Dynamic NFS Provisioner on your Kubernetes cluster using the [OpenEBS Helm Chart](https://github.com/openebs/dynamic-nfs-provisioner). You will be installing and configuring only the dynamic nfs provisioner, since Wordpress requires it.
-An alternative way to install [OpenEBS NFS Provisioner](https://marketplace.digitalocean.com/apps/openebs-nfs-provisioner) is via the DigitalOcean 1-click apps platform.
 
 First, clone the `container-blueprints` repository. Then, change directory to your local copy and to the `DOKS-wordpress` subfolder:
 

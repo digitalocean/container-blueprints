@@ -37,3 +37,12 @@ externalDatabase:
 # Disabling MariaDB
 mariadb:
   enabled: false
+
+wordpressSkipInstall: true
+
+wordpressExtraConfigContent: |
+    define( 'WP_REDIS_SCHEME', '<REDIS_SCHEME>' );
+    define( 'WP_REDIS_HOST', '<REDIS_HOST>' );
+    define( 'WP_REDIS_PORT', <REDIS_PORT> );
+    define( 'WP_REDIS_PASSWORD', '<REDIS_PASSWORD>');
+    define( 'WP_REDIS_DATABASE', 0 );

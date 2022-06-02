@@ -10,5 +10,3 @@ auth:
   password: <YOUR_REDIS_PASSWORD_HERE>
   
 architecture: standalone
-
-

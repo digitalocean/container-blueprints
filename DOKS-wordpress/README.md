@@ -307,7 +307,7 @@ Installing and configuring a Redis instance can be done in two ways. Using a [Di
 
 ### Configuring the Redis DO Managed Database
 
-In this section you will create a Redis Database using DigitalOcean. If you do not want to use a managed database, please skip to the next section - [Configuring the Redis helm chart]
+In this section you will create a Redis Database using DigitalOcean. If you do not want to use a managed database, please skip to the next section - [Configuring the Redis helm chart](configuring-the-redis-helm-chart)
 
 **Note:**
 Before deciding on using a managed database vs the helm installed one, you should consider the following aspects:
@@ -316,7 +316,7 @@ With the Redis Helm chart installation it is important to note that DB pods (the
 
 First, create the Redis Managed database:
 
-```shell
+```console
 
 doctl databases create wordpress-redis --engine redis --region nyc1 --num-nodes 1 --size db-s-1vcpu-1gb
 
@@ -597,8 +597,10 @@ The output looks similar to (notice the `RWX` access mode for the wordpress PVC,
 
 ```text
 NAMESPACE   NAME                                           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE
-openebs     nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   Bound    pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            do-block-storage   20m
-wordpress   wordpress                                      Bound    pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            rwx-storage        20m
+openebs     nfs-pvc-2b898be6-19f4-4e52-ab9b-10e73ce7d82f   Bound    pvc-b253c0eb-b02b-46a6-ae88-9a7dd2b71377   5Gi        RWO            do-block-storage   10m
+openebs     nfs-pvc-4ce1c2a8-ee65-420f-a722-50f4e50c60a7   Bound    pvc-2f2c9dd8-807d-4919-aac1-ab1af69e24c7   5Gi        RWO            do-block-storage   3m22s
+redis       redis-data-redis-master-0                      Bound    pvc-2b898be6-19f4-4e52-ab9b-10e73ce7d82f   5Gi        RWX            rwx-storage        10m
+wordpress   wordpress                                      Bound    pvc-4ce1c2a8-ee65-420f-a722-50f4e50c60a7   5Gi        RWX            rwx-storage        3m22s
 ```
 
 Verify the associated PVs created in the cluster:
@@ -611,8 +613,10 @@ The ouput looks similar to:
 
 ```text
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                                  STORAGECLASS       REASON   AGE
-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   5Gi        RWX            Delete           Bound    wordpress/wordpress                                    rwx-storage                 23m
-pvc-d3f0c597-69ba-4710-bd7d-ed29ce41ce04   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-b505c0af-e6ab-4623-8ad1-1bad784261d5   do-block-storage            23m
+pvc-2b898be6-19f4-4e52-ab9b-10e73ce7d82f   5Gi        RWX            Delete           Bound    redis/redis-data-redis-master-0                        rwx-storage                 12m
+pvc-2f2c9dd8-807d-4919-aac1-ab1af69e24c7   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-4ce1c2a8-ee65-420f-a722-50f4e50c60a7   do-block-storage            4m48s
+pvc-4ce1c2a8-ee65-420f-a722-50f4e50c60a7   5Gi        RWX            Delete           Bound    wordpress/wordpress                                    rwx-storage                 4m48s
+pvc-b253c0eb-b02b-46a6-ae88-9a7dd2b71377   5Gi        RWO            Delete           Bound    openebs/nfs-pvc-2b898be6-19f4-4e52-ab9b-10e73ce7d82f   do-block-storage            12m
 ```
 
 You can also create additional pods to demonstrate the capabilities of the NFS provisioner by opening the `(wordpress-values.yaml)` file, and add the `replicaCount` line set to the number of desired replicas.

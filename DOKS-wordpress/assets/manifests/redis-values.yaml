@@ -4,6 +4,9 @@ master:
     storageClass: rwx-storage
     accessModes: ["ReadWriteMany"]
     size: 5Gi
+  
+volumePermissions:
+  enabled: true
 
 auth:
   enabled: true

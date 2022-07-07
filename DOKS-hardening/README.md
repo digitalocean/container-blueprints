@@ -11,7 +11,7 @@ Kubernetes has grown a lot in terms of stability and maturity in the past years.
 1. [Control Plane](https://kubernetes.io/docs/concepts/overview/components/#control-plane-components) - takes care of scheduling your workloads (Pods) and responding to cluster events (such as starting up a new pod when a deployment's replicas field is unsatisfied).
 2. [Worker Nodes](https://kubernetes.io/docs/concepts/overview/components/#node-components) - these are the actual machines running your Kubernetes workloads. Node components run on every node, maintaining running pods and providing the Kubernetes runtime environment.
 
-Below picture shows the typical architecture of a Kubernetes cluster:
+Below picture shows the typical architecture of a Kubernetes cluster and possible weak points:
 
 ![Kubernetes Architecture Overview](assets/images/DOKS_Overview.png)
 
@@ -59,7 +59,11 @@ Below picture illustrates the concept better:
 
 ![DOKS End to End Security](asssets/../assets/images/DOKS_E2E_Security.png)
 
-There are many vulnerability scanning tools available but this guide focuses on two implementations:
+There are many vulnerability scanning tools available but this guide focuses on two implementations - [Armosec Kubescape](https://github.com/armosec/kubescape/) and [Snyk](https://snyk.io).
+
+Without further ado, please pick one to start with from the list below.
+
+## Security Compliance Scanning Solutions
 
 | KUBESCAPE | SNYK |
 |:---------------------------------------------------------------------:|:------------------------------------------------------:|

@@ -95,7 +95,7 @@ Some examples to try with Kubescape CLI:
    kubescape scan framework nsa --exclude-namespaces kube-system,kube-public
    ```
 
-Kubescape can scan your Kubernetes cluster hosts (worker nodes) as well for OS vulnerabilities. To enable this feature you need to pass the `--enable-host-scan` flag to the kubescape CLI. When this flag is enabled, kubescape installs (deploys) sensors in your cluster to scan each host for known vulnerabilities. At the end when the scan process is completed, the sensors are removed from your cluster.
+Kubescape can scan your Kubernetes cluster hosts (worker nodes) as well for OS vulnerabilities. To enable this feature you need to pass the `--enable-host-scan` flag to the kubescape CLI. When this flag is enabled, kubescape deploys `sensors` via a Kubernetes DaemonSet in your cluster to scan each host for known vulnerabilities. At the end when the scan process is completed, the sensors are removed from your cluster.
 
 Kubescape CLI provides help pages for all available options. Below command can be used to print the help page:
 
@@ -155,6 +155,14 @@ The final score is a positive number ranging from **0** to **100%**. A lower val
 Another useful feature provided by the Armosec cloud portal is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the kubescape scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue. Below picture illustrates this process better:
 
 ![Security Compliance Scanning and Iterations](assets/images/security_compliance_scanning_process.png)
+
+For each reported security issue there is a wrench tool icon displayed which you can click on and get remediation assistance:
+
+![Access Kubescape Cloud Portal Remediation Assistance](assets/images/kubescape_cp_remediation_assist.png)
+
+Next, a new window opens giving you details about each affected Kubernetes object, highlighted in green color:
+
+![Kubescape Cloud Portal Remediation Hints](assets/images/kubescape_cp_remediation_hints.png)
 
 ## Step 3 - Configuring Kubescape Automatic Scans for DOKS
 

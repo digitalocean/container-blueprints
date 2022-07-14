@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This guide provides a short introduction about Kubernetes security best practices in general (applies to [DOKS](https://docs.digitalocean.com/products/kubernetes/) as well). Then, a practical example is given about how to integrate popular vulnerability scan tools (e.g. [Kubescape](https://github.com/armosec/kubescape/)) in a traditional CI/CD pipeline implemented using [Tekton](https://tekton.dev).
+This guide provides a short introduction about Kubernetes security best practices in general (applies to [DOKS](https://docs.digitalocean.com/products/kubernetes/) as well). Then, a practical example is given about how to integrate popular vulnerability scan tools (e.g. [Kubescape](https://github.com/armosec/kubescape/)) in a traditional CI/CD pipeline implemented using GitHub actions.
 
 [Kubernetes](https://kubernetes.io) gained a lot of popularity over time and for a good reason. It's widely being used today in every modern infrastructure based on microservices. Kubernetes takes away the burden of managing high availability (or HA) setups, such as scheduling and replicating workloads on different nodes, thus assuring resiliency. Then, at the networking layer it also takes care of load balancing and distributes traffic evenly to workloads. At its core, Kubernetes is a modern container scheduler offering additional features such as application configuration and secrets management, to mention a few. You can also set quotas and control applications access to various resources (such as CPU and memory) by fine tuning resource limits requests. In terms of security, you can restrict who has access to what resources via RBAC, which is an acronym standing for Resource Based Access Control.
 
-Kubernetes has grown a lot in terms of stability and maturity in the past years. On the other hand, it has become a more complex ecosystem by leveraging more functional components. No matter where you run Kubernetes clusters (cloud or on-premise), at its core Kubernetes is divided into two major components:
+Kubernetes has grown a lot in terms of stability and maturity in the past years. On the other hand, it has become a more complex ecosystem by leveraging more functional components. No matter where you run Kubernetes (cloud or on-premise), each cluster is divided into two major components:
 
 1. [Control Plane](https://kubernetes.io/docs/concepts/overview/components/#control-plane-components) - takes care of scheduling your workloads (Pods) and responding to cluster events (such as starting up a new pod when a deployment's replicas field is unsatisfied).
 2. [Worker Nodes](https://kubernetes.io/docs/concepts/overview/components/#node-components) - these are the actual machines running your Kubernetes workloads. Node components run on every node, maintaining running pods and providing the Kubernetes runtime environment.
@@ -30,21 +30,32 @@ Approaching Kubernetes security is a multi step process, and usually consists of
 2. Hardening Worker Nodes. Most of the control plane recommendations apply here as well, with a few notes such as:
    - Never expose [kubelets](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/) or [kube-proxies](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/) publicly.
    - Avoid exposing the SSH service to the public. This is recommended to reduce surface attacks. For system administration you can use a VPN setup.
-3. Hardening the Kubernetes environment:
+3. Hardening the Kubernetes applications environment:
    - Strict permissions for Pods and containers (such as not allowing root user within Pod spec, immutable filesystems for containers, etc.)
    - Proper configuration of RBAC policies.
-   - Setting up admission controllers to allow running trusted containers only.
+   - Container images signing, thus allowing only trusted images to run.
+   - Setting up admission controllers to allow trusted (or signed) container images only.
    - Network policies and namespace isolation (restrict applications to dedicated namespaces, as well as controlling ingress/egress traffic between namespaces).
+   - Periodic Kubernetes cluster scanning.
 4. Hardening the software supply chain:
    - Application source code and 3rd party libraries scanning for known vulnerabilities.
    - Application container images scanning for known vulnerabilities.
    - Kubernetes YAML manifests scanning for known vulnerabilities.
 
-In case of DOKS, you don't have to worry about control plane and worker nodes security because this is already taken care by the cloud provider (DigitalOcean). That's one of the main reasons it is called a managed Kubernetes service. Still, users have access to the underlying machines (Droplets) and firewall settings, so it all circles back to administrators diligence to pay attention and not expose services or ports that are not really required.
+Below picture illustrates what are the recommended steps to achieve end to end security for Kubernetes:
 
-What's left is taking measures to harden the Kubernetes applications software supply chain, hence this guide main focus is around that area.
+![DOKS End to End Security](asssets/../assets/images/DOKS_E2E_Security.png)
 
-## Kubernetes Applications Supply Chain Security
+In case of DOKS, you don't have to worry about control plane and worker nodes security because this is already taken care by the cloud provider (DigitalOcean). This is one of the main benefits of using a managed Kubernetes service. Still, users have access to the underlying machines (Droplets) and firewall settings, so it all circles back to administrators diligence to pay attention and not expose services or ports that are not really required.
+
+What's left is taking measures to harden the Kubernetes applications environment and the software supply chain. This guide is mainly focused around the Kubernetes supply chain security, and it will teach you to:
+
+1. Run Kubernetes vulnerability scans in the early stages within your CI/CD pipelines (e.g. Tekton, Jenkins, GitHub workflows, etc).
+2. Run periodic scans within your Kubernetes cluster, as well as for new deployments.
+3. Evaluate security risks and take the appropriate actions to reduce the risk factor to a minimum.
+4. Get notified in real time (e.g. via Slack) about possible threats in your Kubernetes cluster.
+
+## Kubernetes Environment and Software Supply Chain Security
 
 To build an application and run it on Kubernetes, you need a list of ingredients which are part of the software supply chain. The software supply chain is usually composed of:
 
@@ -53,17 +64,15 @@ To build an application and run it on Kubernetes, you need a list of ingredients
 - Docker images hosting your application (including inherited base images).
 - YAML manifests that tell Kubernetes to create required resources for your application to run, such as Pods, Secrets, PVs, etc.
 
-Hardening the Kubernetes applications software supply chain can be accomplished in the early stages at the CI/CD pipeline level. Every modern infrastructure is using a CI/CD system nowadays to build and deploy applications, hence the reason.
+Hardening the Kubernetes applications environment and software supply chain can be accomplished in the early stages at the CI/CD pipeline level. Every modern infrastructure is using a CI/CD system nowadays to build and deploy applications, hence the reason.
 
-Below picture illustrates the concept better:
-
-![DOKS End to End Security](asssets/../assets/images/DOKS_E2E_Security.png)
+The first step required to harden your Kubernetes environment is to use a dedicated tool that continuously scans for vulnerabilities both at the CI/CD pipeline level and the entire Kubernetes cluster.
 
 There are many vulnerability scanning tools available but this guide focuses on two implementations - [Armosec Kubescape](https://github.com/armosec/kubescape/) and [Snyk](https://snyk.io).
 
 Without further ado, please pick one to start with from the list below.
 
-## Security Compliance Scanning Solutions
+## Kubernetes Vulnerability Scanning Tools
 
 | KUBESCAPE | SNYK |
 |:---------------------------------------------------------------------:|:------------------------------------------------------:|

@@ -7,9 +7,9 @@
 Kubescape key features:
 
 - Detect Kubernetes misconfigurations and provide remediation assistance via the [Armosec Cloud Portal](https://cloud.armosec.io).
-- Risk analysis and trending over time is simplified via the [Armosec Cloud Portal](https://cloud.armosec.io).
-- Includes multiple security and compliance frameworks, such as ArmoBest, NSA, MITRE and Devops Best Practices.
-- Exceptions management support.
+- Risk analysis and trending over time via the [Armosec Cloud Portal](https://cloud.armosec.io).
+- Includes multiple security compliance frameworks, such as ArmoBest, NSA, MITRE and Devops Best Practices.
+- Exceptions management support, allowing Kubernetes admins to mark acceptable risk levels.
 - Integrates with various tools such as Jenkins, Github workflows, Prometheus, etc.
 - Image scanning - scan images for vulnerabilities and easily see, sort and filter (which vulnerability to patch first).
 - Simplifies RBAC complexity by providing an easy-to-understand visual graph which shows the RBAC configuration in your cluster.
@@ -25,7 +25,7 @@ Kubescape is using different frameworks to detect misconfigurations such as:
 - [NSA](https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/2716980/nsa-cisa-release-kubernetes-hardening-guidance/)
 - [MITRE ATT&CK](https://www.microsoft.com/security/blog/2021/03/23/secure-containerized-environments-with-updated-threat-matrix-for-kubernetes/)
 
-In this guide you will use Kubescape to perform risk analysis for your DOKS cluster and application YAML manifests. Then, you will learn how to take the appropriate action to remediate the situation. Finally, you will learn how to integrate Kubescape in a Tekton CI/CD pipeline to scan for vulnerabilities in the early stages of development.
+In this guide you will use Kubescape to perform risk analysis for your DOKS cluster and Kubernetes applications YAML manifests. Then, you will learn how to take the appropriate action to remediate the situation. Finally, you will learn how to integrate Kubescape in a CI/CD pipeline to scan for vulnerabilities in the early stages of development.
 
 ## Table of Contents
 
@@ -36,24 +36,30 @@ In this guide you will use Kubescape to perform risk analysis for your DOKS clus
   - [Risk Score Analysis and Trending](#risk-score-analysis-and-trending)
   - [Assisted Remediation for Reported Security Issues](#assisted-remediation-for-reported-security-issues)
 - [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks)
-- [Step 4 - Example Tekton CI/CD Pipeline Implementation using Kubescape CLI](#step-4---example-tekton-cicd-pipeline-implementation-using-kubescape-cli)
+  - [Provisioning Armo Cluster Components to DOKS](#provisioning-armo-cluster-components-to-doks)
+  - [Tweaking Helm Values for the Armo Cluster Components Chart](#tweaking-helm-values-for-the-armo-cluster-components-chart)
+- [Step 4 - Scanning for Kubernetes Vulnerabilities in a CI/CD Pipeline using Kubescape CLI](#step-4---scanning-for-kubernetes-vulnerabilities-in-a-cicd-pipeline-using-kubescape-cli)
+  - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
+  - [Investigating Kubescape Scan Results and Fixing Reported Issues](#investigating-kubescape-scan-results-and-fixing-reported-issues)
+  - [Triggering the Kubescape CI/CD Workflow Automatically](#triggering-the-kubescape-cicd-workflow-automatically)
+  - [Treating Exceptions](#treating-exceptions)
+- [Conclusion](#conclusion)
+- [Additional Resources](#additional-resources)
 
 ## Requirements
 
 To complete all steps from this guide, you will need:
 
-1. A working `DOKS` cluster running `Kubernetes version >=1.21` that you have access to. The DOKS cluster must have at least `2 nodes`, each with `2 CPUs`, `4 GB` of memory, and `5 GB` of disk storage for PVCs (needed for Tekton workspaces). For additional instructions on configuring a DigitalOcean Kubernetes cluster, see: [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS#how-to-set-up-a-digitalocean-managed-kubernetes-cluster-doks).
-2. [Tekton 1-click application](https://marketplace.digitalocean.com/apps/tekton-pipelines) installed in your DOKS cluster for the CI part.
-3. [ArgoCD 1-click application](https://marketplace.digitalocean.com/apps/argocd) installed in your DOKS cluster for the CD part.
-4. A [Git](https://git-scm.com/downloads) client to interact with GitHub repositories.
-5. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
-6. [Argo CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation) to interact with `Argo CD` using the command line interface.
-7. [Tekton CLI](https://tekton.dev/docs/cli/#installation) to interact with `Tekton Pipelines` using the command line interface.
-8. [Kubescape CLI](https://hub.armosec.io/docs/installing-kubescape/) to interact with [Kubescape](https://github.com/armosec/kubescape/) vulnerabilities scanner.
+1. A working `DOKS` cluster running `Kubernetes version >=1.21` that you have access to. For additional instructions on configuring a DigitalOcean Kubernetes cluster, see: [How to Set Up a DigitalOcean Managed Kubernetes Cluster (DOKS)](https://github.com/digitalocean/Kubernetes-Starter-Kit-Developers/tree/main/01-setup-DOKS#how-to-set-up-a-digitalocean-managed-kubernetes-cluster-doks).
+2. A [DigitalOcean Docker Registry](https://docs.digitalocean.com/products/container-registry/). A free plan is enough to complete this tutorial. Also, make sure it is integrated with your DOKS cluster as explained [here](https://docs.digitalocean.com/products/container-registry/how-to/use-registry-docker-kubernetes/#kubernetes-integration).
+3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
+4. [Helm](https://www.helm.sh), to install Kubescape in the Kubernetes cluster.
+5. [Kubescape CLI](https://hub.armosec.io/docs/installing-kubescape/) to interact with [Kubescape](https://github.com/armosec/kubescape/) vulnerabilities scanner.
+6. An [Armosec Cloud Portal](https://cloud.armosec.io) account used to periodically publish scan results for your Kubernetes cluster to a nice dashboard. Also, the Armosec cloud portal helps you with investigations and risk score analysis.
 
 ## Step 1 - Getting to Know the Kubescape CLI
 
-You can manually scan for vulnerabilities via the `kubescape` command line interface. The kubescape CLI is designed to run in a CI/CD environment as well (such as Tekton). Next, you can scan a whole Kubernetes cluster (REST API, Kubernetes objects, etc) or limit scans to specific namespaces, enable host scanning (worker nodes), perform local or remote repository scanning (e.g. GitHub), detect YAML misconfigurations and scan container images for vulnerabilities. Various frameworks can be selected via the `framework` command, such as ArmoBest, NSA, MITRE, etc.
+You can manually scan for vulnerabilities via the `kubescape` command line interface. The kubescape CLI is designed to run in a CI/CD environment as well (such as Tekton, Jenkins, GitHub Workflows, etc). Next, you can scan a whole Kubernetes cluster (REST API, Kubernetes objects, etc) or limit scans to specific namespaces, enable host scanning (worker nodes), perform local or remote repository scanning (e.g. GitHub), detect YAML misconfigurations and scan container images for vulnerabilities. Various frameworks can be selected via the `framework` command, such as ArmoBest, NSA, MITRE, etc.
 
 When kubescape CLI is invoked, it will download (or update on subsequent runs) the vulnerabilities database on your local machine. Then, it will start the scanning process and report back issues in a specific format. By default it will print a summary table using the standard output or the console. Kubescape can generate reports in other formats as well, such as JSON, HTML, etc.
 
@@ -74,7 +80,7 @@ Some examples to try with Kubescape CLI:
 - Use a specific namespace only for scanning:
 
    ```shell
-   kubescape scan --include-namespaces tekton-ci
+   kubescape scan --include-namespaces microservices
    ```
 
 - Exclude specific namespaces from scanning:
@@ -124,7 +130,7 @@ Available Commands:
 ...
 ```
 
-There is a help page for each command or subcommand as well which can be accessed via `kubescape [command] --help`.
+Each Kubescape command (or subcommand) has an associated help page as well which can be accessed via `kubescape [command] --help`.
 
 Please visit the official [documentation page](https://hub.armosec.io/docs/examples/) for more Kubescape examples.
 
@@ -152,9 +158,11 @@ The final score is a positive number ranging from **0** to **100%**. A lower val
 
 ### Assisted Remediation for Reported Security Issues
 
-Another useful feature provided by the Armosec cloud portal is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the kubescape scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue. Below picture illustrates this process better:
+Another useful feature provided by the Armosec cloud portal is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the kubescape scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue. 
 
-![Security Compliance Scanning and Iterations](assets/images/security_compliance_scanning_process.png)
+Below picture illustrates this process better:
+
+![Security Compliance Scanning Process](assets/images/security_compliance_scanning_process.png)
 
 For each reported security issue there is a wrench tool icon displayed which you can click on and get remediation assistance:
 
@@ -164,18 +172,311 @@ Next, a new window opens giving you details about each affected Kubernetes objec
 
 ![Kubescape Cloud Portal Remediation Hints](assets/images/kubescape_cp_remediation_hints.png)
 
+You can click on each control such as `C-0018`, `C-0030`, `C-0086`, etc. and investigate the highlighted issues. Then, you need to take the appropriate action to fix each reported security issue.
+
 ## Step 3 - Configuring Kubescape Automatic Scans for DOKS
 
-## Step 4 - Example Tekton CI/CD Pipeline Implementation using Kubescape CLI
+Kubescape can be configured to automatically scan your entire Kubernetes cluster at a specific interval of time, or each time a new application image is deployed. You need to deploy Armo cluster components in your Kubernetes cluster using Helm to achieve this functionality. An [Armosec Cloud Portal](https://cloud.armosec.io) account is needed as well to upload and inspect the results.
+
+The Armo Helm chart installs cron jobs that trigger a vulnerability scan both for the entire Kubernetes cluster and container images. Each cron job interval is configurable in the [Helm values file](assets/manifests/armo-values-v1.7.13.yaml).
+
+### Provisioning Armo Cluster Components to DOKS
+
+Steps to deploy kubescape in your Kubernetes cluster using Helm:
+
+1. Add the `Helm` repo, and list the available `charts`:
+
+   ```shell
+   helm repo add armo https://armosec.github.io/armo-helm/
+
+   helm repo update armo
+
+   helm search repo armo
+   ```
+
+   The output looks similar to the following:
+
+   ```text
+   NAME                            CHART VERSION   APP VERSION     DESCRIPTION                
+   armo/armo-cluster-components    1.7.13          v1.7.13         ARMO Vulnerability Scanning
+   ```
+
+   **Note:**
+
+   The chart of interest is `armo/armo-cluster-components`, which will install Armo components in your Kubernetes cluster. Please visit the [armo-helm](https://github.com/armosec/armo-helm) repository page, for more details about this chart.
+
+2. Fetch your Armo account user ID using kubescape CLI (needed in the next step):
+
+   ```shell
+   kubescape config view
+   ```
+
+   The output looks similar to:
+
+   ```json
+   {
+      "accountID": "c952b81f-77d5-4afb-80cc-59b59ec2sdfr"
+   }
+   ```
+
+   **Note:**
+
+   If you never used kubescape CLI to submit scan results to the Armosec cloud portal, the above command won't work. In this case, you need to log in to the portal and get the account ID from there as explained [here](https://hub.armosec.io/docs/installation-of-armo-in-cluster#install-a-pre-registered-cluster).
+
+3. Install the Armo Kubescape cluster components using `Helm` - a dedicated `armo-system` namespace will be created as well (make sure to replace the `<>` placeholders accordingly):
+
+   ```shell
+   ARMO_KUBESCAPE_CHART_VERSION="1.7.13"
+
+   helm install armo armo/armo-cluster-components \
+      --version "$ARMO_KUBESCAPE_CHART_VERSION" \
+      --namespace armo-system \
+      --create-namespace \
+      --set clusterName="$(kubectl config current-context)" \
+      --set accountGuid=<YOUR_ARMO_ACCOUNT_ID>
+   ```
+
+   **Note:**
+
+   A specific version for the `armo-cluster-components` Helm chart is used. In this case `1.7.13` was picked, which maps to the `1.7.13` release of Armo cluster components (see the output from `Step 1.`). It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via `Git`.
+
+Now check if all the Armo cluster components deployments are up and running:
+
+```shell
+kubectl get deployments -n armo-system
+```
+
+The output looks similar to:
+
+```text
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
+armo-collector              1/1     1            1           5d6h
+armo-kubescape              1/1     1            1           5d6h
+armo-notification-service   1/1     1            1           5d6h
+armo-vuln-scan              1/1     1            1           5d6h
+armo-web-socket             1/1     1            1           5d6h
+```
+
+All Armo cluster components should be up and running.
+
+Finally, after a few minutes you should be able to see your cluster scan reports available in the cloud portal, such as:
+
+- Configuration scanning results:
+
+   ![Armo Portal Configuration Scanning](assets/images/kubescape_configuration_scanning.png)
+
+- Image scanning results:
+
+   ![Armo Portal Image Scanning](assets/images/kubescape_image_scanning.png)
+
+- RBAC visualizer results:
+
+   ![Armo Portal RBAC Visualizer](assets/images/kubescape_rbac_visualizer.png)
+
+For more information please visit the [cluster vulnerability scanning](https://hub.armosec.io/docs/cluster-vulnerability-scanning) page from the official documentation.
+
+### Tweaking Helm Values for the Armo Cluster Components Chart
+
+You can change the behavior of the Armo cluster components chart by editing the [Helm values file](assets/manifests/armo-values-v1.7.13.yaml) provided in this guide.
+
+The following settings can be changed:
+
+- Scanning intervals via the `armoScanScheduler` and `armoKubescapeScanScheduler` values.
+- New image scan trigger via the `triggerNewImageScan` value.
+
+The full list of values that can be customized to your needs is available in the [official Helm chart values](https://github.com/armosec/armo-helm/blob/armo-cluster-components-1.7.13/charts/armo-components/values.yaml) file.
+
+To apply changes, you need to upgrade the current Helm chart version via (make sure to replace the `<>` placeholders accordingly):
+
+```shell
+ARMO_KUBESCAPE_CHART_VERSION="1.7.13"
+
+helm upgrade armo armo/armo-cluster-components \
+  --version "$ARMO_KUBESCAPE_CHART_VERSION" \
+  --namespace armo-system \
+  --set clusterName="$(kubectl config current-context)" \
+  --set accountGuid=<YOUR_ARMO_ACCOUNT_ID> \
+  -f <YOUR_CUSTOM_HELM_VALUES_FILE_HERE>
+```
+
+## Step 4 - Scanning for Kubernetes Vulnerabilities in a CI/CD Pipeline using Kubescape CLI
 
 How do you benefit from embedding a security compliance scanning tool in your CI/CD pipeline and avoid unpleasant situations in a production environment?
 
-It all starts at the foundation or the infrastructure level where software development starts. In general, you will want to use a dedicated environment for each stage. So, in the early stages of development when code changes happen frequently, you have a dedicated development environment (called the lower environment usually). Then, the application gets more and more refined in the QA environment where QA teams perform manual and/or automated testing. Next, if the application gets the QA team approval it is promoted to upper environments, such as staging and finally into production. In this process, where the application is promoted from one stage to another (or from lower to upper environments), a dedicated pipeline runs which continuously scans application artifacts and computes the security risk score. If the score doesn't meet a specific threshold, the pipeline fails immediately and promotion of application artifacts to upper environments (such as production) is stopped in the early stages.
+It all starts at the foundation level where software development starts. In general, you will want to use a dedicated environment for each stage. So, in the early stages of development when application code changes very often, you should use a dedicated development environment (called the lower environment usually). Then, the application gets more and more refined in the QA environment where QA teams perform manual and/or automated testing. Next, if the application gets the QA team approval it is promoted to the upper environments such as staging, and finally into production. In this process, where the application is promoted from one environment to another, a dedicated pipeline runs which continuously scans application artifacts and computes the security risk score. If the score doesn't meet a specific threshold, the pipeline fails immediately and application artifacts promotion to production is stopped in the early stages.
 
-So, the security scanning tool (e.g. kubescape) acts as a gate stopping unwanted artifacts from getting in your production environment from the early stages of development. In the same manner, upper environments pipelines use kubescape to allow or forbid application artifacts entering the final production stage.
+So, the security scanning tool (e.g. kubescape) acts as a gatekeeper stopping unwanted artifacts in your production environment from the early stages of development. In the same manner, upper environments pipelines use kubescape to allow or forbid application artifacts entering the final production stage.
+
+### GitHub Actions CI/CD Pipeline Example
+
+In this step you will learn how to create and test a simple CI/CD pipeline with integrated vulnerability scanning via GitHub workflows. The pipeline provided in this guide builds and deploys the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the DigitalOcean [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
+
+At a high level overview, the [example CI/CD pipeline](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) provided in the kubernetes-sample-apps repo is comprised of the following stages:
+
+1. Application build stage - builds main application artifacts and runs automated tests.
+2. Kubescape scan stage - scans for known vulnerabilities the Kubernetes YAML manifests associated with the application. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
+3. Application image build stage - builds and tags the applicatin image using the latest git commit SHA. Then the image is pushed to DOCR.
+4. Application deployment stage - deploys the application to Kubernetes (DOKS).
 
 How do you fail the pipeline if a certain security compliance level is not met ?
 
-Kubescape CLI provides a flag named `--fail-threshold` for this purpose. Remember what the risk score is and how do you interpret the numbers ?
+Kubescape CLI provides a flag named `--fail-threshold` for this purpose. This flag correlates with the overall risk score computed after each scan. You can fail or pass the pipeline based on the threshold value and stop application deployment if conditions are not met.
 
-TBD.
+Below picture illustrates the flow for the example CI/CD pipeline used in this guide:
+
+![Kubescape Pipeline Flow](assets/images/kubescape_pipeline_flow.png)
+
+Please follow below steps to create and test the kubescape CI/CD GitHub workflow provided in the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) GitHub repository:
+
+1. Fork the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) GitHub repository.
+2. Create the following [GitHub encrypted secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) for your **kubernetes-sample-apps** copy (**Settings Tab** -> **Secrets** -> **Actions**):
+   - `DIGITALOCEAN_ACCESS_TOKEN` - holds your DigitalOcean account token.
+   - `DOCKER_REGISTRY` - holds your DigitalOcean docker registry name including the endpoint (e.g. `registry.digitalocean.com/sample-apps`).
+   - `DOKS_CLUSTER` - holds your DOKS cluster name. You can run the following command to get your DOKS cluster name: `doctl k8s cluster list --no-header --format Name`.
+   - `ARMOSEC_PORTAL_ACCOUNT_ID` - holds your Armo portal user account ID - run: `kubescape config view` to get the ID. If that doesn't work you can find more info [here](https://hub.armosec.io/docs/installation-of-armo-in-cluster#install-a-pre-registered-cluster).
+   - `SLACK_WEBHOOK_URL` - holds your [Slack incoming webhook URL](https://api.slack.com/messaging/webhooks) used for kubescape scan notifications.
+3. Navigate to the **Actions** tab of your forked repo and select the **Game 2048 Kubescape CI/CD Example** workflow:
+   ![Game 2048 Main Workflow](assets/images/game-2048-wf-nav.png))
+4. Click on the **Run Workflow** button and leave the default values:
+   ![Game 2048 Workflow Triggering](assets/images/game-2048_wf_start.png)
+
+A new entry should appear in below list after clicking the **Run Workflow** green button. You can click on it and observe the pipeline run progress:
+
+![Game 2048 Workflow Progress](assets/images/game-2048-wf-progress.png)
+
+The pipeline will fail and stop when the **kubescape-nsa-security-check** job runs. This is done on purpose because the default threshold value of `30` for the overall risk score is lower than the expected value. You should also receive a Slack notifications with status details about the workflow run:
+
+![Game 2048 Workflow Slack Notification](assets/images/game-2048-wf-slack-notification.png)
+
+In the next step you will learn how to investigate the kubescape scan report and fix the issues to lower the risk score.
+
+### Investigating Kubescape Scan Results and Fixing Reported Issues
+
+Whenever the risk score value threshold is not met, the game-2048 GitHub workflow will fail and a slack notification is sent containing further details. To check the status report, you can click on the kubescape scan results from the received Slack notification. Then, you will be redirected to the repository scan section from the Armo cloud portal.
+
+First, click on the **kubernetes-sample-apps** entry from the list associate with the master branch:
+
+![Game 2048 Repo Scan Entry](assets/images/game-2048-ks-repo-scan.png)
+
+Next, click on the **deployment.yaml** entry, and check reported issues. Then, click the wrench tool in the upper right part:
+
+![Game 2048 Repo Scan Results](assets/images/game-2048-scan-report.png)
+
+A new browser window opens showing in detail each control and description. You will also be presented with required actions to remediate the issue (highlighted in green color):
+
+![Game 2048 Reported Scan Controls](assets/images/game-2048-controls-list.png)
+
+After collecting all the information from the scan report, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo. The fixes are already in place, you just need to uncomment the last lines from the file. The `deployment.yaml` file should look like:
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-2048
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: game-2048
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: game-2048
+    spec:
+      containers:
+        - name: backend
+          # Replace the `<>` placeholders with your docker registry info
+          image: registry.digitalocean.com/sample-apps/2048-game:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 50Mi
+            limits:
+              cpu: 200m
+              memory: 100Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+```
+
+**Note:**
+
+The [C-0055](https://hub.armosec.io/docs/c-0055) suggestions were omitted in this example for simplicity. You can read more about secure computing mode in Kubernetes [here](https://kubernetes.io/docs/tutorials/security/seccomp/).
+
+What changed ? The following security fixes were applied:
+
+- `readOnlyRootFilesystem` - runs container image in read only (cannot alter files by `kubectl exec` in the container).
+- `runAsNonRoot` - runs as the non root user defined by the [USER](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile#L18) directive from the game-2048 project [Dockerfile](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile).
+- `allowPrivilegeEscalation` - setting **allowPrivilegeEscalation** to **false** ensures that no child process of a container can gain more privileges than its parent.
+
+Finally, commit the changes for the **deployment.yaml** file and push to main branch. After manually triggering the workflow it should complete successfully this time:
+
+![Game 2048 Workflow Success](assets/images/game-2048-wf-success.png)
+
+You should also receive a green Slack notification this time from the kubescape scan job. Navigate to the Armo portal link and check if the issues that you fixed recently are gone - there should be none reported.
+
+A few final checks can be performed as well to verify if the issues were fixed:
+
+1. Check if the game-2048 deployment has a read-only (immutable) filesystem by writing the application **index.html** file:
+
+   ```shell
+   kubectl exec -it deployment/game-2048 -n game-2048 -- /bin/bash -c "echo > /public/index.html"
+   ```
+
+   The output looks similar to:
+
+   ```text
+   /bin/bash: /public/index.html: Read-only file system
+   command terminated with exit code 1
+   ```
+
+2. Check if the container runs as non-root user (should print a integer number different than zero - e.g. `1000`):
+
+   ```shell
+   kubectl exec -it deployment/game-2048 -n game-2048 -- id -u
+   ```
+
+If all checks pass then you successfully applied the required security recommendations.
+
+### Triggering the Kubescape CI/CD Workflow Automatically
+
+You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-kubescape.yml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) file:
+
+```yaml
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+```
+
+After editing the file, commit the changes to your main branch and you should be ready to go.
+
+### Treating Exceptions
+
+There are cases when you don't want the final risk score to be affected by some reported issues which are considered safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
+
+You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
+
+## Conclusion
+
+In this guide you learned how to use one of the most popular Kubernetes scanning tool - Kubescape. You also learned how to perform cluster and repository scanning (YAML manifests). Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
+
+Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example (the game-2048 application from the kubernetes-sample-apps repository).
+
+## Additional Resources
+
+You can learn more by reading the following additional resources:
+
+- [Catch Security Issues Ahead of Time by Armosec](https://www.armosec.io/blog/find-kubernetes-security-issues-while-coding/)
+- [Secure your Kubernetes Deployments by Armosec](https://www.armosec.io/blog/secure-kubernetes-deployment/)
+- [Learn More about Armosec Host Scanners](https://hub.armosec.io/docs/host-sensor)
+- [Kubescape Prometheus Exporter](https://hub.armosec.io/docs/prometheus-exporter)
+- [Customizing Kubescape Scan Frameworks](https://hub.armosec.io/docs/customization)

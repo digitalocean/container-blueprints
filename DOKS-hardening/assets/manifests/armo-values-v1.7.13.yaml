@@ -1,0 +1,46 @@
+# -- enable/disable trigger image scan for new images
+triggerNewImageScan: "enable"
+
+# image vulnerability scheduled scan using a CronJob
+armoScanScheduler:
+
+  # -- enable/disable image vulnerability a schedule scan using a CronJob
+  enabled: true
+
+  # scan scheduler container name
+  name: armo-scan-scheduler
+
+          # Frequency of running the scan
+          #     ┌───────────── minute (0 - 59)
+          #     │ ┌───────────── hour (0 - 23)
+          #     │ │ ┌───────────── day of the month (1 - 31)
+          #     │ │ │ ┌───────────── month (1 - 12)
+          #     │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday;
+          #     │ │ │ │ │                         7 is also Sunday on some systems)
+          #     │ │ │ │ │
+          #     │ │ │ │ │
+          #     * * * * *
+  # -- scan schedule frequency
+  scanSchedule: "0 0 * * *"
+
+# kubescape scheduled scan using a CronJob
+armoKubescapeScanScheduler:
+
+  # -- enable/disable a kubescape scheduled scan using a CronJob
+  enabled: true
+
+  # scan scheduler container name
+  name: armo-kubescape-scheduler
+
+           # -- Frequency of running the scan
+           #     ┌───────────── minute (0 - 59)
+           #     │ ┌───────────── hour (0 - 23)
+           #     │ │ ┌───────────── day of the month (1 - 31)
+           #     │ │ │ ┌───────────── month (1 - 12)
+           #     │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday;
+           #     │ │ │ │ │                         7 is also Sunday on some systems)
+           #     │ │ │ │ │
+           #     │ │ │ │ │
+           #     * * * * *
+  # -- scan schedule frequency
+  scanSchedule: "0 0 * * *"

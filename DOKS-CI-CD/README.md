@@ -32,24 +32,25 @@ In the tutorial, you learn:
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-  - [Preparing the Sample Application Requirements](#preparing-the-sample-application-requirements)
+- [About the Blueprint Software Components](#about-the-blueprint-software-components)
+    - [Getting to Know Kaniko](#getting-to-know-kaniko)
+    - [Getting to Know Tekton](#getting-to-know-tekton)
+      - [Tasks](#tasks)
+      - [Pipelines](#pipelines)
+      - [Event Listeners and Triggers](#event-listeners-and-triggers)
+      - [Tekton Catalog](#tekton-catalog)
+      - [Tekton Dashboard](#tekton-dashboard)
+    - [Getting to Know Argo CD](#getting-to-know-argo-cd)
+      - [Applications](#applications)
+      - [Projects](#projects)
+    - [Getting to Know Knative](#getting-to-know-knative)
+      - [Serving Component](#serving-component)
+      - [Eventing Component](#eventing-component)
+    - [Getting to Know Cert-Manager](#getting-to-know-cert-manager)
+- [STEP 1: Prepare the Sample Application Requirements](#step1-prepare-the-sample-application-requirements)
     - [Forking the Sample Application Repo](#forking-the-sample-application-repo)
     - [Creating a Dedicated Docker Registry](#creating-a-dedicated-docker-registry)
     - [Creating a Dedicated Namespaces for Kubernetes Resources](#creating-a-dedicated-namespaces-for-kubernetes-resources)
-- [Getting to Know Kaniko](#getting-to-know-kaniko)
-- [Getting to Know Tekton](#getting-to-know-tekton)
-  - [Tasks](#tasks)
-  - [Pipelines](#pipelines)
-  - [Event Listeners and Triggers](#event-listeners-and-triggers)
-  - [Tekton Catalog](#tekton-catalog)
-  - [Tekton Dashboard](#tekton-dashboard)
-- [Getting to Know Argo CD](#getting-to-know-argo-cd)
-  - [Applications](#applications)
-  - [Projects](#projects)
-- [Getting to Know Knative](#getting-to-know-knative)
-  - [Serving Component](#serving-component)
-  - [Eventing Component](#eventing-component)
-- [Getting to Know Cert-Manager](#getting-to-know-cert-manager)
 - [Step 1 - Installing Cert-Manager](#step-1---installing-cert-manager)
 - [Step 2 - Installing Tekton](#step-2---installing-tekton)
   - [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines)
@@ -82,96 +83,11 @@ To complete this tutorial, you will need:
 9. [Knative CLI](https://knative.dev/docs/install/client/install-kn) for interacting with Knative using the command line interface.
 10. [Kustomize](https://kustomize.io) is extensively used in this guide, and some basic knowledge is required. You can follow the [official DigitalOcean tutorial](https://www.digitalocean.com/community/tutorials/how-to-manage-your-kubernetes-configurations-with-kustomize) as a starting point.
 
-Next, you will prepare the sample application repository used in this tutorial, as well as the [DigitalOcean Docker Registry](https://www.digitalocean.com/products/container-registry) used for storing application images. You will also create a dedicated Kubernetes namespace, to keep everything clean and well organized.
+Next, a quick introduction is given for each software component used in this tutorial. The main purpose is to give you a basic understanding for each component, and how it's being used.
 
-## STEP 1: Prepare the Sample Application Requirements
+## About the Blueprint Software Components
 
-Before continuing with the main tutorial, perform the following steps:
-
-1. Fork the sample application repository used in this guide.
-2. Provision a DigitalOcean Container Registry to store the sample application images.
-3. Create a dedicated Kubernetes namespace to store all custom resources used in this tutorial.
-
-### Forking the Sample Application Repo
-
-To test the Tekton CI/CD flow presented in this blueprint, you need to fork the [tekton-sample-app](https://github.com/digitalocean/kubernetes-sample-apps) repository first. Also, create a GitHub Personal Access Token (PAT) with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe because you will need them later.
-
-### Creating a Dedicated Docker Registry
-
-A [DigitalOcean Container Registry](https://docs.digitalocean.com/products/container-registry) is required for storing the sample application images. Follow the DigitalOcean [quickstart guide](https://docs.digitalocean.com/products/container-registry/quickstart) to create one. A free plan is adequate to complete this guide.
-
-You can also run below command to provision a new registry using `doctl`:
-
-```shell
-doctl registry create <YOUR_DOCKER_REGISTRY_NAME_HERE> \
-  --region <YOUR_DOCKER_REGISTRY_REGION_HERE> \
-  --subscription-tier starter
-```
-
-The command includes the following flags:
-
-- `--region` - region name where the registry is going to be provisioned. You can list all the available regions via the `doctl registry options available-regions` command.
-- `--subscription-tier` - subscription tier to use. You can list all the available tiers via the `doctl registry options subscription-tiers` command. The example above uses the `starter` tier which is free to use.
-
-After completion, you should have a new private Docker registry created. Verify that the Docker registry was created successfully. Make sure to replace the `<>` placeholders accordingly in the following command:
-
-```shell
-doctl registry get <YOUR_DOCKER_REGISTRY_NAME_HERE>
-```
-
-The output looks similar to the following:
-
-```text
-Name         Endpoint                               Region slug
-tekton-ci    registry.digitalocean.com/tekton-ci    nyc3
-```
-
-In this guide, the registry is named `tekton-ci`, and provisioned in the `nyc3` region.
-
-As a final step, you also need to configure your DOKS cluster to be able to pull images from your private registry. DigitalOcean provides an easy way of accomplishing this task using the control panel. First, navigate to the **Settings** tab of your container registry. Then, click on the **Edit** button from the **DigitalOcean Kubernetes Integration** section. Finally, select the appropriate checkbox, and press the **Save** button.
-
-![DigitalOcean Kubernetes Integration](assets/images/docr-k8s-integration.png)
-
-### Creating a Dedicated Namespaces for Kubernetes Resources
-
-It's a best practice in general to have a dedicated namespace when provisioning new stuff in your Kubernetes cluster. This approach helps you keep everything organized. On the other hand, you can easily clean up everything later on, if desired.
-
-This tutorial uses the `doks-ci-cd` namespace. Run the following command to create it:
-
-```shell
-kubectl create ns doks-ci-cd
-```
-
-Check if the namespace is successfully created:
-
-```shell
-kubectl get ns doks-ci-cd
-```
-
-The output looks similar to:
-
-```text
-NAME         STATUS   AGE
-doks-ci-cd   Active   13m
-```
-
-### Clone the Sample Repository
-
-Clone the `container-blueprints` repo:
-
-```shell
-git clone https://github.com/digitalocean/container-blueprints.git
-```
-
-Change directory to your local copy:
-
-```shell
-cd container-blueprints
-```
-
-Next, a quick introduction is given for each software component used in this tutorial. Main purpose is to give you a basic understanding for each component, and how it's being used.
-
-## Getting to Know Kaniko
+### Getting to Know Kaniko
 
 [Kaniko](https://github.com/GoogleContainerTools/kaniko) is nothing more than a tool to build container images directly from a Dockerfile, inside a container or Kubernetes cluster. It means, you can build and push docker images to a remote registry directly from your Kubernetes cluster. What is nice about this setup is you can have a full CI system running completely in your Kubernetes cluster.
 
@@ -181,7 +97,7 @@ Please visit the [official project page](https://github.com/GoogleContainerTools
 
 In this blueprint, you will use Kaniko to build Docker images for your custom applications from Kubernetes cluster itself.
 
-## Getting to Know Tekton
+### Getting to Know Tekton
 
 Continuous integration (or CI) is the process of automating the integration of small code changes from multiple contributors into a single software project. To achieve CI a central repository is used (e.g. Git), where each developer (or contributor) pushes code changes. Then, a CI tool (e.g. Tekton) detects changes and starts the CI automation.
 
@@ -203,7 +119,7 @@ Tekton is modular in nature and very well organized. This tutorial relies on the
 - [Pipelines](https://tekton.dev/docs/pipelines/pipelines) - used to organize tasks and define your custom CI/CD flow.
 - [Triggers and EventListeners](https://tekton.dev/docs/triggers) - used to capture and trigger on Git events (e.g. git push events).
 
-### Tasks
+#### Tasks
 
 A Tekton `Task` is a collection of `Steps` that you define and arrange in a specific order of execution as part of your continuous integration flow. Steps are the basic unit of execution in Tekton which perform real actions such as build code, create a Docker image, push to Docker registry, etc. To add steps to a Task you define a `steps` field containing a list of desired Steps. The order in which the Steps appear in this list is the order in which they will execute.
 
@@ -266,7 +182,7 @@ Below picture illustrates the `Task` and `TaskRun` concepts:
 
 Please visit the [official documentation page](https://tekton.dev/docs/pipelines/tasks) for more information and details about Tekton Tasks.
 
-### Pipelines
+#### Pipelines
 
 A Tekton Pipeline is used to organize your Tekton tasks and orchestrate the CI flow. A Pipeline specifies one or more Tasks in the desired order of execution. You can embed tasks in a pipeline directly, or reference them from external manifest files. By using references, you create task definitions in separate manifest files, and have them reused across different pipelines. This method is encouraged because it avoids code or configuration duplication, and promotes `code reuse` (or configuration reuse). Thus, tasks act as objects (with inputs and outputs) that can be reused (and instantiated) across your pipelines. You can create dedicated pipelines to test, or build and deploy your applications code.
 
@@ -342,7 +258,7 @@ Below picture illustrates Pipelines and Tasks composition:
 
 Please visit the [official documentation page](https://tekton.dev/docs/pipelines/pipelines) for more information and details about Tekton Pipelines.
 
-### Event Listeners and Triggers
+#### Event Listeners and Triggers
 
 You need a mechanism to tell Tekton how to react and trigger your CI pipeline in response to external events emitted by various sources, such as GitHub. This is accomplished via another Tekton component called [Triggers](https://github.com/tektoncd/triggers) (needs to be installed separately). Tekton triggers allows you to detect and extract information from events from a variety of sources, and execute TaskRuns and PipelineRuns based on that information. It can also pass information extracted from events directly to TaskRuns and PipelineRuns.
 
@@ -363,7 +279,7 @@ In this blueprint you will use Tekton EventListeners and Triggers to respond to 
 
 Please visit the [official project page](https://tekton.dev/docs/triggers) for more information and details about Tekton EventListener and Triggers.
 
-### Tekton Catalog
+#### Tekton Catalog
 
 [Tekton Catalog](https://hub.tekton.dev) is a collection of reusable tasks that you can use in your pipelines. The main idea is to promote the modular design of Tekton and abstract implementation details for common situations. For example, in most of the pipelines you will want to use git clone tasks, application image build tasks, push to remote registry tasks, etc.
 
@@ -377,7 +293,7 @@ In this blueprint you will use Tekton catalog to install commonly used tasks, su
 
 Please visit the [Tekton Catalog](https://github.com/tektoncd/catalog) GitHub project page to learn more.
 
-### Tekton Dashboard
+#### Tekton Dashboard
 
 [Tekton Dashboard](https://github.com/tektoncd/dashboard) is a web-based interface for Tekton Pipelines and Tekton triggers resources. It allows you to manage and view Tekton resource creation, execution, and completion.
 
@@ -394,7 +310,7 @@ In this blueprint you will use Tekton dashboard to interact with pipeline runs, 
 
 Please visit the [Tekton Dashboard](https://github.com/tektoncd/dashboard) GitHub project page to learn more.
 
-## Getting to Know Argo CD
+### Getting to Know Argo CD
 
 [Argo CD](https://argoproj.github.io/cd) is a popular open source implementation for doing GitOps continuous delivery (CD) on top of Kubernetes. Your applications, definitions, configurations, and environments should be declarative and version controlled. Also application deployment and lifecycle management should be automated, auditable, and easy to understand. All this can be done using Argo.
 
@@ -421,13 +337,13 @@ Argo CD helps you implement GitOps, and keep your Kubernetes manifests (even tho
 
 Next, the most important aspect is to have a setup where a specialized system takes care of the CD part, and doesn't interfere or it's not dependent on the CI part. If the CI system goes down for some reason, it shouldn't affect the CD part and vice-versa. On the other hand, a system or a component that does multiple things at once can be prone to failure in accomplishing both. So, it's best to follow the single responsibility principle in general, and let Tekton take care of the CI part, and Argo to handle CD (as well as GitOps).
 
-### Applications
+#### Applications
 
 Argo CD is using the [Application](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#applications) core concept to manage applications deployment and lifecycle. Inside an Argo CD application manifest you define the Git repository hosting your application definitions, as well as the corresponding Kubernetes cluster used to deploy your applications. In other words, an Argo CD application defines the relationship between a source repository and a Kubernetes cluster. It's a very concise and scalable design, where you can associate multiple sources (Git repositories) and corresponding Kubernetes clusters.
 
 A major benefit of using applications is that you don't need to deploy Argo to each cluster individually. You can use a dedicated cluster for Argo, and deploy applications to all clusters at once from a single place. This way, you avoid Argo CD downtime or loss, in case other environments have issues or get decommissioned.
 
-### Projects
+#### Projects
 
 You can group similar applications into a [Project](https://argo-cd.readthedocs.io/en/stable/user-guide/projects). Projects permit logical grouping of applications and associated roles/permissions, when working with multiple teams. When not specified, each new application belongs to the `default` project. The `default` project is created automatically, and it doesn't have any restrictions. The default project can be modified, but not deleted.
 
@@ -439,7 +355,7 @@ Please visit the official documentation website to read more about [Argo CD core
 
 In this blueprint, you will learn how to use Argo CD to continuously deploy code changes for your custom applications.
 
-## Getting to Know Knative
+### Getting to Know Knative
 
 [Knative](https://knative.dev) is an open-source solution to build and deploy serverless applications using Kubernetes as the underlying platform. In addition to application development, developers may also have infrastructure tasks such as maintaining Kubernetes manifests for application deployment, rolling back to a previous revision, traffic routing, scaling up or down workloads to meet load demand, etc.
 
@@ -450,7 +366,7 @@ Knative has two main components:
 - [Serving](https://knative.dev/docs/serving) - abstracts all required parts needed for your application to run and be accessible to the outside world.
 - [Eventing](https://knative.dev/docs/eventing) - adds support for event driven programming, thus making it easy to create event driven architectures.
 
-### Serving Component
+#### Serving Component
 
 In this blueprint you will learn how to use the [Knative Serving](https://knative.dev/docs/serving) component to deploy and publicly expose serverless web application - the [2048 game](https://en.wikipedia.org/wiki/2048_(video_game)), via [Services](https://knative.dev/docs/serving/services) (not to be confused with Kubernetes Services).
 
@@ -472,7 +388,7 @@ Other important Knative Serving resources worth mentioning are:
 
 You can read more about the available Knative Serving resources on the [official documentation page](https://knative.dev/docs/serving/#serving-resources).
 
-### Eventing Component
+#### Eventing Component
 
 The [Knative Eventing](https://knative.dev/docs/eventing) component is used in this blueprint to connect GitHub events with Tekton Pipelines for automatic triggering of the CI flow. The Tekton CI pipeline rebuilds the application image whenever a git push event is triggered by the GitHub repository hosting the application source code.
 
@@ -495,7 +411,7 @@ In this blueprint, you will learn how to use Knative Eventing to listen for GitH
 
 For more information about Knative and other features, please visit the [official documentation website](https://knative.dev/docs). [Knative Tips](https://knative.tips) is also a very good source of documentation and practical examples for Knative in general.
 
-## Getting to Know Cert-Manager
+### Getting to Know Cert-Manager
 
 [Cert-Manager](https://cert-manager.io) is an open-source certificate management tool designed to work with Kubernetes. It supports all the required operations for obtaining, renewing, and using SSL/TLS certificates. Cert-Manager can talk with various certificate authorities (CAs), like [Let's Encrypt](https://letsencrypt.org), [HashiCorp Vault](https://www.vaultproject.io), and [Venafi](https://www.venafi.com). It can also automatically issue valid certificates for you and renew them before they expire.
 
@@ -512,6 +428,93 @@ Cert-Manager relies on several CRDs to fetch TLS certificates for your domain, s
 In this blueprint, you will a cluster based issuer (`ClusterIssuer`) resource to enable TLS termination for your Knative services. Next, `net-certmanager` takes care of managing TLS certificates automatically for you, via the `ClusterIssuer` resource.
 
 For more information about Cert-Manager and its features, please visit the [official documentation website](https://cert-manager.io/docs).
+
+Next, you will prepare the sample application repository used in this tutorial, as well as the [DigitalOcean Docker Registry](https://www.digitalocean.com/products/container-registry) used for storing application images. You will also create a dedicated Kubernetes namespace, to keep everything clean and well organized.
+
+## STEP 1: Prepare the Sample Application Requirements
+
+Before continuing with the main tutorial, perform the following steps:
+
+1. Fork the sample application repository used in this guide.
+2. Provision a DigitalOcean Container Registry to store the sample application images.
+3. Create a dedicated Kubernetes namespace to store all custom resources used in this tutorial.
+
+### Forking the Sample Application Repo
+
+To test the Tekton CI/CD flow presented in this blueprint, you need to fork the [tekton-sample-app](https://github.com/digitalocean/kubernetes-sample-apps) repository first. Also, create a GitHub Personal Access Token (PAT) with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe because you will need them later.
+
+### Creating a Dedicated Docker Registry
+
+A [DigitalOcean Container Registry](https://docs.digitalocean.com/products/container-registry) is required for storing the sample application images. Follow the DigitalOcean [quickstart guide](https://docs.digitalocean.com/products/container-registry/quickstart) to create one. A free plan is adequate to complete this guide.
+
+You can also run below command to provision a new registry using `doctl`:
+
+```shell
+doctl registry create <YOUR_DOCKER_REGISTRY_NAME_HERE> \
+  --region <YOUR_DOCKER_REGISTRY_REGION_HERE> \
+  --subscription-tier starter
+```
+
+The command includes the following flags:
+
+- `--region` - region name where the registry is going to be provisioned. You can list all the available regions via the `doctl registry options available-regions` command.
+- `--subscription-tier` - subscription tier to use. You can list all the available tiers via the `doctl registry options subscription-tiers` command. The example above uses the `starter` tier which is free to use.
+
+After completion, you should have a new private Docker registry created. Verify that the Docker registry was created successfully. Make sure to replace the `<>` placeholders accordingly in the following command:
+
+```shell
+doctl registry get <YOUR_DOCKER_REGISTRY_NAME_HERE>
+```
+
+The output looks similar to the following:
+
+```text
+Name         Endpoint                               Region slug
+tekton-ci    registry.digitalocean.com/tekton-ci    nyc3
+```
+
+In this guide, the registry is named `tekton-ci`, and provisioned in the `nyc3` region.
+
+As a final step, you also need to configure your DOKS cluster to be able to pull images from your private registry. DigitalOcean provides an easy way of accomplishing this task using the control panel. First, navigate to the **Settings** tab of your container registry. Then, click on the **Edit** button from the **DigitalOcean Kubernetes Integration** section. Finally, select the appropriate checkbox, and press the **Save** button.
+
+![DigitalOcean Kubernetes Integration](assets/images/docr-k8s-integration.png)
+
+### Creating a Dedicated Namespace for Kubernetes Resources
+
+It's a best practice in general to have a dedicated namespace when provisioning new stuff in your Kubernetes cluster. This approach helps you keep everything organized. On the other hand, you can easily clean up everything later on, if desired.
+
+This tutorial uses the `doks-ci-cd` namespace. Run the following command to create it:
+
+```shell
+kubectl create ns doks-ci-cd
+```
+
+Check if the namespace is successfully created:
+
+```shell
+kubectl get ns doks-ci-cd
+```
+
+The output looks similar to:
+
+```text
+NAME         STATUS   AGE
+doks-ci-cd   Active   13m
+```
+
+### Clone the Sample Repository
+
+Clone the `container-blueprints` repo:
+
+```shell
+git clone https://github.com/digitalocean/container-blueprints.git
+```
+
+Change directory to your local copy:
+
+```shell
+cd container-blueprints
+```
 
 Next, you will install each software component required by this guide using the [DigitalOcean Marketplace](https://marketplace.digitalocean.com) collection of 1-click apps for Kubernetes.
 
@@ -1126,7 +1129,7 @@ code DOKS-CI-CD/assets/manifests/tekton/configs/github/pat.env
   - To obtain Argo CD admin password, use the following command:
 
     ```shell
-    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
     ```
 
   - To obtain your DigitalOcean Container Registry `read/write` credentials, you can use the following command and write results directly in the `config.json` file:

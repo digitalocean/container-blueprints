@@ -14,10 +14,12 @@ Kubescape key features:
 - Image scanning - scan images for vulnerabilities and easily see, sort and filter (which vulnerability to patch first).
 - Simplifies RBAC complexity by providing an easy-to-understand visual graph which shows the RBAC configuration in your cluster.
 
-Kubescape can be run in two different ways:
+Kubescape can be run in different ways:
 
-- Via the command line interface (or CLI). In this mode you run Kubescape on demand and get quick insights about Kubernetes clusters and objects from a security point of view. The Kubescape CLI can be used in a CI/CD pipeline as well. Results can be uploaded to the [Armosec Cloud Portal](https://cloud.armosec.io) for later inspection and risk analysis.
-- As a cronjob inside your Kubernetes cluster. In this mode Kubescape is constantly watching your Kubernetes cluster for changes and uploads scan results to the [Armosec Cloud Portal](https://cloud.armosec.io) .
+- Via the command line interface (or CLI). This the preferred way to run inside scripts and various automations, including CI/CD pipelines. Results can be uploaded to the [Armosec Cloud Portal](https://cloud.armosec.io) for analysis.
+- As a cronjob inside your Kubernetes cluster. In this mode, Kubescape is constantly watching your Kubernetes cluster for changes and uploads scan results to the [Armosec Cloud Portal](https://cloud.armosec.io). This feature works only if you deploy [Armo Cluster Components](https://hub.armosec.io/docs/installation-of-armo-in-cluster) in your DOKS cluster.
+- Via the [Armosec Cloud Portal](https://cloud.armosec.io) web interface. You can trigger [configuration scanning](https://cloud.armosec.io/configuration-scanning), [Image Scanning](https://cloud.armosec.io/image-scanning), view and inspect [RBAC rules](https://cloud.armosec.io/rbac-visualizer), customize frameworks, etc. This feature works only if you deploy [Armo Cluster Components](https://hub.armosec.io/docs/installation-of-armo-in-cluster) in your DOKS cluster.
+- Inside your [Visual Studio Code IDE](https://hub.armosec.io/docs/visual-studio-code). This way you can spot issues very quickly in the early stages of development.
 
 Kubescape is using different frameworks to detect misconfigurations such as:
 
@@ -25,7 +27,17 @@ Kubescape is using different frameworks to detect misconfigurations such as:
 - [NSA](https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/2716980/nsa-cisa-release-kubernetes-hardening-guidance/)
 - [MITRE ATT&CK](https://www.microsoft.com/security/blog/2021/03/23/secure-containerized-environments-with-updated-threat-matrix-for-kubernetes/)
 
-In this guide you will use Kubescape to perform risk analysis for your DOKS cluster and Kubernetes applications YAML manifests. Then, you will learn how to take the appropriate action to remediate the situation. Finally, you will learn how to integrate Kubescape in a CI/CD pipeline to scan for vulnerabilities in the early stages of development.
+Is Kubescape free ?
+
+Yes, the tooling and community edition is free forever, except the cloud portal backend implementation and maybe some other advanced features. There is also a limitation on the maximum number of worker nodes you can scan per cluster (up to 10). Your scan reports data retention is limited to one month in the Armo cloud portal.
+
+See [pricing plans](https://www.armosec.io/pricing/) for more information.
+
+Is Kubescape open source ?
+
+Yes, the tooling for sure is. You can visit the [Armo GitHub home page](https://github.com/armosec) to find more details about each component implementation. The cloud portal backend implementation is not open source.
+
+In this guide you will use Kubescape to perform risk analysis for your Kubernetes applications supply chain (container images, Kubernetes YAML manifests). Then, you will learn how to take the appropriate action to remediate the situation. Finally, you will learn how to integrate Kubescape in a CI/CD pipeline to scan for vulnerabilities in the early stages of development.
 
 ## Table of Contents
 
@@ -35,14 +47,16 @@ In this guide you will use Kubescape to perform risk analysis for your DOKS clus
 - [Step 2 - Getting to Know the Armosec Cloud Portal](#step-2---getting-to-know-the-armosec-cloud-portal)
   - [Risk Score Analysis and Trending](#risk-score-analysis-and-trending)
   - [Assisted Remediation for Reported Security Issues](#assisted-remediation-for-reported-security-issues)
+  - [Triggering Cluster Scans from the Web UI](#triggering-cluster-scans-from-the-web-ui)
 - [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks)
   - [Provisioning Armo Cluster Components to DOKS](#provisioning-armo-cluster-components-to-doks)
   - [Tweaking Helm Values for the Armo Cluster Components Chart](#tweaking-helm-values-for-the-armo-cluster-components-chart)
-- [Step 4 - Scanning for Kubernetes Vulnerabilities in a CI/CD Pipeline using Kubescape CLI](#step-4---scanning-for-kubernetes-vulnerabilities-in-a-cicd-pipeline-using-kubescape-cli)
+- [Step 4 - Using Kubescape to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-4---using-kubescape-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
   - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
   - [Investigating Kubescape Scan Results and Fixing Reported Issues](#investigating-kubescape-scan-results-and-fixing-reported-issues)
   - [Triggering the Kubescape CI/CD Workflow Automatically](#triggering-the-kubescape-cicd-workflow-automatically)
   - [Treating Exceptions](#treating-exceptions)
+- [Step 5 - Enabling Slack Notifications](#step-5---enabling-slack-notifications)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -55,19 +69,21 @@ To complete all steps from this guide, you will need:
 3. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI for `Kubernetes` interaction. Follow these [instructions](https://www.digitalocean.com/docs/kubernetes/how-to/connect-to-cluster/) to connect to your cluster with `kubectl` and `doctl`.
 4. [Helm](https://www.helm.sh), to install Kubescape in the Kubernetes cluster.
 5. [Kubescape CLI](https://hub.armosec.io/docs/installing-kubescape/) to interact with [Kubescape](https://github.com/armosec/kubescape/) vulnerabilities scanner.
-6. An [Armosec Cloud Portal](https://cloud.armosec.io) account used to periodically publish scan results for your Kubernetes cluster to a nice dashboard. Also, the Armosec cloud portal helps you with investigations and risk score analysis.
+6. A free [Armosec Cloud Portal](https://cloud.armosec.io) account used to periodically publish scan results for your Kubernetes cluster to a nice dashboard. Also, the Armosec portal web interface helps you with investigations and risk analysis.
 
 ## Step 1 - Getting to Know the Kubescape CLI
 
-You can manually scan for vulnerabilities via the `kubescape` command line interface. The kubescape CLI is designed to run in a CI/CD environment as well (such as Tekton, Jenkins, GitHub Workflows, etc). Next, you can scan a whole Kubernetes cluster (REST API, Kubernetes objects, etc) or limit scans to specific namespaces, enable host scanning (worker nodes), perform local or remote repository scanning (e.g. GitHub), detect YAML misconfigurations and scan container images for vulnerabilities. Various frameworks can be selected via the `framework` command, such as ArmoBest, NSA, MITRE, etc.
+You can manually scan for vulnerabilities via the `kubescape` command line interface. The kubescape CLI is designed to be used in various scripts and automations. A practical example is in a CI/CD pipeline implemented using various tools such as Tekton, Jenkins, GitHub Workflows, etc.
 
-When kubescape CLI is invoked, it will download (or update on subsequent runs) the vulnerabilities database on your local machine. Then, it will start the scanning process and report back issues in a specific format. By default it will print a summary table using the standard output or the console. Kubescape can generate reports in other formats as well, such as JSON, HTML, etc.
+Kubescape is designed to scan a whole Kubernetes cluster from ground up (workloads, containers, etc). If desired, you can limit scans to a specific namespace as well. Other features include host scanning (worker nodes), local or remote repositories scanning (e.g. GitHub), detect misconfigurations in Kubernetes YAML manifests or Helm charts. Various frameworks can be selected via the `framework` command, such as ArmoBest, NSA, MITRE, etc.
+
+When kubescape CLI is invoked, it will download (or update) the known vulnerabilities database on your local machine. Then, it will start the scanning process and report back issues in a specific format. By default it will print a summary table using the standard output or the console. Kubescape can generate reports in other formats as well, such as JSON, HTML, SARIF, etc.
 
 You can opt to push the results to the [Armosec Cloud Portal](https://cloud.armosec.io) via the `--submit` flag to store and visualize scan results later.
 
 **Note:**
 
-It's not mandatory to submit results to the Armosec cloud portal. The big advantage of using the portal is visibility because it gives you a nice graphical overview for Kubescape scan results and the overall risk score. It also helps with the investigations and provides remediation hints.
+It's not mandatory to submit scan results to the Armosec cloud portal. The big advantage of using the portal is visibility because it gives you access to a nice dashboard where you can check all scan reports and the overall risk score. It also helps you on the long term with investigations and remediation hints.
 
 Some examples to try with Kubescape CLI:
 
@@ -101,9 +117,9 @@ Some examples to try with Kubescape CLI:
    kubescape scan framework nsa --exclude-namespaces kube-system,kube-public
    ```
 
-Kubescape can scan your Kubernetes cluster hosts (worker nodes) as well for OS vulnerabilities. To enable this feature you need to pass the `--enable-host-scan` flag to the kubescape CLI. When this flag is enabled, kubescape deploys `sensors` via a Kubernetes DaemonSet in your cluster to scan each host for known vulnerabilities. At the end when the scan process is completed, the sensors are removed from your cluster.
+Kubescape is able to scan your Kubernetes cluster hosts (or worker nodes) for OS vulnerabilities as well. To enable this feature, you need to pass the `--enable-host-scan` flag to the kubescape CLI. When this flag is enabled, kubescape deploys `sensors` in your cluster. Sensors are created using Kubernetes DaemonSets which deploy Pods on each node of your cluster to scan for known vulnerabilities. After the scan process is completed, the sensors are removed from your cluster (including the associated Kubernetes resources).
 
-Kubescape CLI provides help pages for all available options. Below command can be used to print the help page:
+Kubescape CLI provides help pages for all available options. Below command can be used to print the main help page:
 
 ```shell
 kubescape --help
@@ -130,9 +146,9 @@ Available Commands:
 ...
 ```
 
-Each Kubescape command (or subcommand) has an associated help page as well which can be accessed via `kubescape [command] --help`.
+Each kubescape CLI command (or subcommand) has an associated help page as well which can be accessed via `kubescape [command] --help`.
 
-Please visit the official [documentation page](https://hub.armosec.io/docs/examples/) for more Kubescape examples.
+Please visit the official [kubescape CLI documentation page](https://hub.armosec.io/docs/examples/) for more examples.
 
 ## Step 2 - Getting to Know the Armosec Cloud Portal
 
@@ -174,11 +190,23 @@ Next, a new window opens giving you details about each affected Kubernetes objec
 
 You can click on each control such as `C-0018`, `C-0030`, `C-0086`, etc. and investigate the highlighted issues. Then, you need to take the appropriate action to fix each reported security issue.
 
+### Triggering Cluster Scans from the Web UI
+
+The Armo cloud portal offers the possibility to trigger cluster scans from web interface as well if the Armo cloud components Helm chart is deployed in your DOKS cluster (discussed in the next step). Both configuration and image scanning can be triggered via a one button click in the portal. In order for this feature to work, you need to wait for the Armo cloud components to finish scanning your cluster in the background, and upload the results.
+
+Triggering a configuration scanning is done by navigating to the [configuration scanning](https://cloud.armosec.io/configuration-scanning) page, and click on the Scan button. Below picture shows how to accomplish this task:
+
+![Kubescape Trigger Scans from UI](assets/images/kubescape-trigger_UI_scan.png)
+
+You can also set or modify the current schedule for automatic scanning if desired by clicking on the Schedule button in the pop-up window that appears after clicking the Scan button. Using the same window, you can select which control frameworks to use for scanning. Below picture shows how to accomplish the tasks:
+
+![Kubescape UI Scan Options](assets/images/kubescape-UI_trigger_options.png)
+
 ## Step 3 - Configuring Kubescape Automatic Scans for DOKS
 
-Kubescape can be configured to automatically scan your entire Kubernetes cluster at a specific interval of time, or each time a new application image is deployed. You need to deploy Armo cluster components in your Kubernetes cluster using Helm to achieve this functionality. An [Armosec Cloud Portal](https://cloud.armosec.io) account is needed as well to upload and inspect the results.
+Kubescape can be configured to automatically scan your entire Kubernetes cluster at a specific interval of time, or each time a new application image is deployed. You need to deploy [Armo Cluster Components](https://hub.armosec.io/docs/installation-of-armo-in-cluster) in your Kubernetes cluster using Helm to achieve this functionality. An [Armosec Cloud Portal](https://cloud.armosec.io) account is needed as well to upload and inspect the results.
 
-The Armo Helm chart installs cron jobs that trigger a vulnerability scan both for the entire Kubernetes cluster and container images. Each cron job interval is configurable in the [Helm values file](assets/manifests/armo-values-v1.7.13.yaml).
+The [Armo Helm chart](https://github.com/armosec/armo-helm) installs cron jobs that trigger a vulnerability scan both for the entire Kubernetes cluster and container images. Each cron job interval is configurable in the [Helm values file](assets/manifests/armo-values-v1.7.15.yaml).
 
 ### Provisioning Armo Cluster Components to DOKS
 
@@ -198,7 +226,7 @@ Steps to deploy kubescape in your Kubernetes cluster using Helm:
 
    ```text
    NAME                            CHART VERSION   APP VERSION     DESCRIPTION                
-   armo/armo-cluster-components    1.7.13          v1.7.13         ARMO Vulnerability Scanning
+   armo/armo-cluster-components    1.7.15          v1.7.15         ARMO Vulnerability Scanning
    ```
 
    **Note:**
@@ -226,7 +254,7 @@ Steps to deploy kubescape in your Kubernetes cluster using Helm:
 3. Install the Armo Kubescape cluster components using `Helm` - a dedicated `armo-system` namespace will be created as well (make sure to replace the `<>` placeholders accordingly):
 
    ```shell
-   ARMO_KUBESCAPE_CHART_VERSION="1.7.13"
+   ARMO_KUBESCAPE_CHART_VERSION="1.7.15"
 
    helm install armo armo/armo-cluster-components \
       --version "$ARMO_KUBESCAPE_CHART_VERSION" \
@@ -238,7 +266,7 @@ Steps to deploy kubescape in your Kubernetes cluster using Helm:
 
    **Note:**
 
-   A specific version for the `armo-cluster-components` Helm chart is used. In this case `1.7.13` was picked, which maps to the `1.7.13` release of Armo cluster components (see the output from `Step 1.`). It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via `Git`.
+   A specific version for the `armo-cluster-components` Helm chart is used. In this case `1.7.15` was picked, which maps to the `1.7.15` release of Armo cluster components (see the output from `Step 1.`). It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via `Git`.
 
 Now check if all the Armo cluster components deployments are up and running:
 
@@ -277,19 +305,19 @@ For more information please visit the [cluster vulnerability scanning](https://h
 
 ### Tweaking Helm Values for the Armo Cluster Components Chart
 
-You can change the behavior of the Armo cluster components chart by editing the [Helm values file](assets/manifests/armo-values-v1.7.13.yaml) provided in this guide.
+You can change the behavior of the Armo cluster components chart by editing the [Helm values file](assets/manifests/armo-values-v1.7.15.yaml) provided in this guide.
 
 The following settings can be changed:
 
 - Scanning intervals via the `armoScanScheduler` and `armoKubescapeScanScheduler` values.
 - New image scan trigger via the `triggerNewImageScan` value.
 
-The full list of values that can be customized to your needs is available in the [official Helm chart values](https://github.com/armosec/armo-helm/blob/armo-cluster-components-1.7.13/charts/armo-components/values.yaml) file.
+The full list of values that can be customized to your needs is available in the [official Helm chart values](https://github.com/armosec/armo-helm/blob/armo-cluster-components-1.7.15/charts/armo-components/values.yaml) file.
 
 To apply changes, you need to upgrade the current Helm chart version via (make sure to replace the `<>` placeholders accordingly):
 
 ```shell
-ARMO_KUBESCAPE_CHART_VERSION="1.7.13"
+ARMO_KUBESCAPE_CHART_VERSION="1.7.15"
 
 helm upgrade armo armo/armo-cluster-components \
   --version "$ARMO_KUBESCAPE_CHART_VERSION" \
@@ -299,7 +327,7 @@ helm upgrade armo armo/armo-cluster-components \
   -f <YOUR_CUSTOM_HELM_VALUES_FILE_HERE>
 ```
 
-## Step 4 - Scanning for Kubernetes Vulnerabilities in a CI/CD Pipeline using Kubescape CLI
+## Step 4 - Using Kubescape to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline
 
 How do you benefit from embedding a security compliance scanning tool in your CI/CD pipeline and avoid unpleasant situations in a production environment?
 
@@ -354,9 +382,9 @@ In the next step you will learn how to investigate the kubescape scan report and
 
 ### Investigating Kubescape Scan Results and Fixing Reported Issues
 
-Whenever the risk score value threshold is not met, the game-2048 GitHub workflow will fail and a slack notification is sent containing further details. To check the status report, you can click on the kubescape scan results from the received Slack notification. Then, you will be redirected to the repository scan section from the Armo cloud portal.
+Whenever the risk score value threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the kubescape scan results link from the received Slack notification. Then, you will be redirected to the repository scan section from the Armo cloud portal.
 
-First, click on the **kubernetes-sample-apps** entry from the list associate with the master branch:
+First, click on the **kubernetes-sample-apps** entry from the list associated with the master branch:
 
 ![Game 2048 Repo Scan Entry](assets/images/game-2048-ks-repo-scan.png)
 
@@ -368,7 +396,7 @@ A new browser window opens showing in detail each control and description. You w
 
 ![Game 2048 Reported Scan Controls](assets/images/game-2048-controls-list.png)
 
-After collecting all the information from the scan report, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo. The fixes are already in place, you just need to uncomment the last lines from the file. The `deployment.yaml` file should look like:
+After collecting all the information from the scan report, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo (located in the `game-2048-example/kustomize/resources` subfolder). The fixes are already in place, you just need to uncomment the last lines from the file. The final `deployment.yaml` file should look like below:
 
 ```yaml
 ---
@@ -406,6 +434,9 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - all
 ```
 
 **Note:**
@@ -424,7 +455,7 @@ Finally, commit the changes for the **deployment.yaml** file and push to main br
 
 You should also receive a green Slack notification this time from the kubescape scan job. Navigate to the Armo portal link and check if the issues that you fixed recently are gone - there should be none reported.
 
-A few final checks can be performed as well to verify if the issues were fixed:
+A few final checks can be performed as well on the Kubernetes side to verify if the issues were fixed:
 
 1. Check if the game-2048 deployment has a read-only (immutable) filesystem by writing the application **index.html** file:
 
@@ -445,7 +476,7 @@ A few final checks can be performed as well to verify if the issues were fixed:
    kubectl exec -it deployment/game-2048 -n game-2048 -- id -u
    ```
 
-If all checks pass then you successfully applied the required security recommendations.
+If all checks pass then you applied the required security recommendations successfully.
 
 ### Triggering the Kubescape CI/CD Workflow Automatically
 
@@ -466,6 +497,33 @@ After editing the file, commit the changes to your main branch and you should be
 There are cases when you don't want the final risk score to be affected by some reported issues which are considered safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
 
 You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
+
+## Step 5 - Enabling Slack Notifications
+
+The Armo cloud portal supports Slack integration for sending real time alerts after each cluster scan. This feature requires the Armo cloud components Helm chart to be installed in your DOKS cluster as explained in [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks).
+
+By enabling Slack alerts you will get important notifications about vulnerabilities detected in your DOKS cluster, such as:
+
+1. Worker nodes (OS level) vulnerabilities.
+2. Running container images vulnerabilities.
+3. Kubernetes misconfigurations for various resources (deployments, pods, etc).
+
+First, you need to create a [Slack App](https://api.slack.com/apps/new). Then, you need to give the following permissions to your Slack Bot in the **OAuth & Permissions** page:
+
+- `channels:join` - Join public channels in a workspace.
+- `channels:read` - View basic information about public channels in a workspace.
+- `groups:read` - View basic information about private channels your Slack App has been added to.
+- `chat:write` - Send messages as @< Your Slack App Name >.
+- `im:read` - View basic information about direct messages your Slack App has been added to.
+- `mpim:read` - View basic information about group direct messages your Slack App has been added to.
+
+Next, navigate to the [settings](https://cloud.armosec.io/settings/) page of your Armo cloud portal account (top right gear icon). From there, select [Integrations](https://cloud.armosec.io/settings/integrations/) page, then [Slack](https://cloud.armosec.io/settings/integrations/slack/). 
+
+Now, paste your Slack Bot OAuth token (can be found in the **OAuth & Permissions** page from your Slack App page) in the **Insert Token** input field. Finally, select how to get notified and the Slack channel where alerts should be sent. Click on **Set Notifications** button and you're set. Below picture illustrates the details:
+
+![Kubescape Slack Notifications](assets/images/kubescape-slack_notifications.png)
+
+After configuring the Slack integration you should receive real time notifications after each cluster scan on the designated channel.
 
 ## Conclusion
 

@@ -348,6 +348,15 @@ At a high level overview, the [example CI/CD pipeline](https://github.com/digita
 3. Application image build stage - builds and tags the applicatin image using the latest git commit SHA. Then the image is pushed to DOCR.
 4. Application deployment stage - deploys the application to Kubernetes (DOKS).
 
+Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
+
+![GitHub Workflow Configuration](assets/images/kubescape_gh_workflow_diagram_code.png)
+
+**Notes:**
+
+- In case of kustomize based projects (which this guide relies on) it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be fixed. This is due to the fact that the generated kustomize.yaml file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
+- You can also tell Kubescape to scan the entire folder where you keep your kustomize configurations (current guide relies on this approach). This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
+
 How do you fail the pipeline if a certain security compliance level is not met ?
 
 Kubescape CLI provides a flag named `--fail-threshold` for this purpose. This flag correlates with the overall risk score computed after each scan. You can fail or pass the pipeline based on the threshold value and stop application deployment if conditions are not met.
@@ -494,7 +503,7 @@ After editing the file, commit the changes to your main branch and you should be
 
 ### Treating Exceptions
 
-There are cases when you don't want the final risk score to be affected by some reported issues which are considered safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
+There are situations when you don't want the final risk score to be affected by some reported issues which your team consider is safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
 
 You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
 
@@ -504,9 +513,9 @@ The Armo cloud portal supports Slack integration for sending real time alerts af
 
 By enabling Slack alerts you will get important notifications about vulnerabilities detected in your DOKS cluster, such as:
 
-1. Worker nodes (OS level) vulnerabilities.
-2. Running container images vulnerabilities.
-3. Kubernetes misconfigurations for various resources (deployments, pods, etc).
+1. Worker nodes vulnerabilities (OS level).
+2. Container images vulnerabilities.
+3. Kubernetes misconfigurations for various resources such as deployments, pods, etc.
 
 First, you need to create a [Slack App](https://api.slack.com/apps/new). Then, you need to give the following permissions to your Slack Bot in the **OAuth & Permissions** page:
 
@@ -527,9 +536,9 @@ After configuring the Slack integration you should receive real time notificatio
 
 ## Conclusion
 
-In this guide you learned how to use one of the most popular Kubernetes scanning tool - Kubescape. You also learned how to perform cluster and repository scanning (YAML manifests). Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
+In this guide you learned how to use one of the most popular Kubernetes vulnerability scanning tool - [Kubescape](https://github.com/armosec/kubescape). You also learned how to perform cluster and repository scanning (YAML manifests) using the kubescape CLI. Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
 
-Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example (the game-2048 application from the kubernetes-sample-apps repository).
+Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example - the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
 ## Additional Resources
 

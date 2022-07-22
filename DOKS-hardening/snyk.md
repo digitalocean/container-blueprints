@@ -20,13 +20,24 @@ Snyk can be run in different ways:
 
 Is Snyk free ?
 
-Yes, the tooling is free, except [Snyk API](https://support.snyk.io/hc/en-us/categories/360000665657-Snyk-API) and some advanced features from the cloud portal (such as advanced reporting). There is also a limitation on the number of tests you can perform per month.
+Yes, the tooling is free, except [Snyk API](https://support.snyk.io/hc/en-us/categories/360000665657-Snyk-API) and some advanced features from the web UI (such as advanced reporting). There is also a limitation on the number of tests you can perform per month.
 
 See [pricing plans](https://snyk.io/plans/) for more information.
 
 Is Snyk open source ?
 
 Yes, the tooling and Snyk CLI for sure is. You can visit the [Snyk GitHub home page](https://github.com/snyk) to find more details about each component implementation. The cloud portal and all paid features such as the rest API implementation is not open source.
+
+Another important set of concepts that is Snyk is using are [Targets](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects#targets) and [Projects](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects#projects).
+
+Targets represent an external resource Snyk has scanned through an integration, the CLI, UI or API. Example targets are a SCM repository, a Kubernetes workload, etc.
+
+Projects on the other hand, define the items Snyk scans at a given Target. A project includes:
+
+- A scannable item external to Snyk.
+- Configuration to define how to run that scan.
+
+You can read more about Snyk core concepts [here](https://docs.snyk.io/introducing-snyk/snyks-core-concepts).
 
 In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform risk analysis for your Kubernetes applications supply chain (container images, Kubernetes YAML manifests). Then, you will learn how to take the appropriate action to remediate the situation. Finally, you will learn how to integrate Snyk in a CI/CD pipeline to scan for vulnerabilities in the early stages of development.
 
@@ -35,12 +46,13 @@ In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform 
 - [Introduction](#introduction)
 - [Requirements](#requirements)
 - [Step 1 - Getting to Know the Snyk CLI](#step-1---getting-to-know-the-snyk-cli)
-- [Step 2 - Getting to Know the Snyk Cloud Portal](#step-2---getting-to-know-the-snyk-cloud-portal)
+- [Step 2 - Getting to Know the Snyk Web UI](#step-2---getting-to-know-the-snyk-web-ui)
 - [Step 4 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-4---using-snyk-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
   - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
   - [Investigating Snyk Scan Results and Fixing Reported Issues](#investigating-snyk-scan-results-and-fixing-reported-issues)
   - [Triggering the Snyk CI/CD Workflow Automatically](#triggering-the-snyk-cicd-workflow-automatically)
   - [Treating Exceptions](#treating-exceptions)
+- [Step 5 - Enabling Slack Notifications](#step-5---enabling-slack-notifications)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -60,7 +72,7 @@ You can manually scan for vulnerabilities via the `snyk` command line interface.
 
 When the snyk CLI is invoked it will immediately start the scanning process and report back issues in a specific format. By default it will print a summary table using the standard output or the console. Snyk can generate reports in other formats as well, such as JSON, HTML, SARIF, etc.
 
-You can opt to push the results to the [Snyk Cloud Portal](https://app.snyk.io) via the `--report` flag to store and visualize scan results later.
+You can opt to push the results to the [Snyk Cloud Portal](https://app.snyk.io) (or web UI) via the `--report` flag to store and visualize scan results later.
 
 **Note:**
 
@@ -75,7 +87,7 @@ Snyk CLI is divided into several subcommands. Each subcommand is dedicated to a 
 
 **Note:**
 
-Before moving on, please make sure to create a [free account](https://docs.snyk.io/tutorials/getting-started/snyk-integrations/snyk-account) using the Snyk cloud portal. Also, snyk CLI needs to be [authenticated](https://docs.snyk.io/snyk-cli/authenticate-the-cli-with-your-account) with your cloud account as well in order for some commands/subcommands to work (e.g. `snyk code test`).
+Before moving on, please make sure to create a [free account](https://docs.snyk.io/tutorials/getting-started/snyk-integrations/snyk-account) using the Snyk web UI. Also, snyk CLI needs to be [authenticated](https://docs.snyk.io/snyk-cli/authenticate-the-cli-with-your-account) with your cloud account as well in order for some commands/subcommands to work (e.g. `snyk code test`).
 
 A few examples to try with Snyk CLI:
 
@@ -160,9 +172,27 @@ Each snyk CLI command (or subcommand) has an associated help page as well which 
 
 Please visit the official [snyk CLI documentation page](https://docs.snyk.io/snyk-cli) for more examples.
 
-## Step 2 - Getting to Know the Snyk Cloud Portal
+## Step 2 - Getting to Know the Snyk Web UI
 
-TBD.
+After you [sign up for a Snyk account, authenticate and log in to Snyk](https://docs.snyk.io/getting-started), the Web UI opens to the Dashboard, with a wizard to guide you through setup steps:
+
+- Identifying where the code you want to monitor in Snyk is located.
+- Defining which projects within your code you want Snyk to scan.
+- Connecting Snyk to the relevant projects to scan them.
+- Reviewing the results of your Snyk scan.
+
+The following features are available via the web UI:
+
+- [Explore the dashboard](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#dashboard)
+- [Investigate reports](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#reports)
+- [Manage projects](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-your-projects)
+- [Manage integrations](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-your-integrations)
+- [Manage group or organization members](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-organization-or-group-members)
+- [View Snyk updates](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#view-product-updates)
+- [Get help](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#view-helpful-resources)
+- [Manage your user account](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-account-preferences-and-settings)
+
+Please visit the official documentation page to learn more about the [Snyk web UI](https://docs.snyk.io/snyk-web-ui).
 
 ## Step 4 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline
 
@@ -184,6 +214,15 @@ At a high level overview, the [example CI/CD pipeline](https://github.com/digita
 2. Snyk scan stage - scans for known vulnerabilities in the Kubernetes YAML manifests associated with the application. Application is kustomize based, so the final **kustomize.yaml** is rendered first, then sent for scanning to snyk CLI. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
 3. Application image build stage - builds and tags the applicatin image using the latest git commit SHA. Then the image is pushed to DOCR.
 4. Application deployment stage - deploys the application to Kubernetes (DOKS).
+
+Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
+
+![GitHub Workflow Configuration](assets/images/snyk_gh_workflow_diagram_code.png)
+
+**Notes:**
+
+- In case of kustomize based projects (which this guide relies on) it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be fixed. This is due to the fact that the generated kustomize.yaml file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
+- You can also tell Snyk to scan the entire folder where you keep your kustomize configurations. This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
 
 How do you fail the pipeline if a certain security compliance level is not met ?
 
@@ -221,7 +260,7 @@ In the next step you will learn how to investigate the snyk scan report and fix 
 
 Whenever the severity level threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the snyk scan results link from the received Slack notification. Then, you will be redirected to the Snyk portal dashboard where you can check the **game-2048-example** project.
 
-First, click on the **game-2048-example:kustomize.yaml** entry from the projects list:
+First, click on the **game-2048-example -> kustomize.yaml** entry from the projects list:
 
 ![Game 2048 Repo Scan Entry](assets/images/snyk_game-2048-repo-scan.png)
 
@@ -231,7 +270,7 @@ Next, tick the **Medium** checkbox in the **Severity** submenu from the left to 
 
 Then, you can inspect each reported issue card and check the details. Go ahead and click on the **Show more details** button - you will receive more details about the current issue, and important hints about how to fix it:
 
-![alt](assets/images/snyk_issue-card-details.png)
+![Snyk Issue Card Details](assets/images/snyk_issue-card-details.png)
 
 After collecting all information from each card, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo (located in the `game-2048-example/kustomize/resources` subfolder). The fixes are already in place, you just need to uncomment the last lines from the file. The final `deployment.yaml` file should look like below:
 
@@ -327,6 +366,32 @@ After editing the file, commit the changes to your main branch and you should be
 
 ### Treating Exceptions
 
+There are situations when you don't want the final report to be affected by some issues which your team consider is safe to ignore. Snyk offers a builtin feature to manage exceptions and overcome this situation.
+
+You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
+
+## Step 5 - Enabling Slack Notifications
+
+You can set up Snyk to send Slack alerts about new vulnerabilities discovered in your projects, and about new upgrades or patches that have become available.
+
+To set it up, you will need to generate a Slack webhook. You can either do this via [Incoming WebHooks](https://api.slack.com/messaging/webhooks) or by creating your own [Slack App](https://api.slack.com/start/building). Once you have generated your Slack Webhook URL, go to your 'Manage organization’ settings, enter the URL, and click the **Connect** button:
+
+![Snyk Slack Integration](assets/images/snyk-slack_notifications.png)
+
 ## Conclusion
 
+In this guide you learned how to use a pretty flexible and powerful Kubernetes vulnerability scanning tool - [Snyk](https://snyk.io). You also learned how to perform repository scanning (YAML manifests) using the snyk CLI. Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
+
+Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example - the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
+
 ## Additional Resources
+
+You can learn more by reading the following additional resources:
+
+- [Snyk Targets and Projects](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects)
+- [More about Snyk Security Levels](https://docs.snyk.io/introducing-snyk/snyks-core-concepts/severity-levels)
+- [Snyk for IDEs](https://docs.snyk.io/ide-tools)
+- [Discover more Snyk Integrations](https://docs.snyk.io/integrations)
+- [Snyk Web UI Users and Group Management](https://docs.snyk.io/features/user-and-group-management)
+- [Fixing and Prioritizing Issues Reported by Snyk](https://docs.snyk.io/features/fixing-and-prioritizing-issues)
+- [Snyk Github Action Used in this Guide](https://github.com/snyk/actions)

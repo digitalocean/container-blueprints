@@ -46,6 +46,7 @@ In this guide you will use Kubescape to perform risk analysis for your Kubernete
 - [Step 1 - Getting to Know the Kubescape CLI](#step-1---getting-to-know-the-kubescape-cli)
 - [Step 2 - Getting to Know the Armosec Cloud Portal](#step-2---getting-to-know-the-armosec-cloud-portal)
   - [Risk Score Analysis and Trending](#risk-score-analysis-and-trending)
+  - [Understanding Kubescape Risk Score Value](#understanding-kubescape-risk-score-value)
   - [Assisted Remediation for Reported Security Issues](#assisted-remediation-for-reported-security-issues)
   - [Triggering Cluster Scans from the Web UI](#triggering-cluster-scans-from-the-web-ui)
 - [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks)
@@ -164,31 +165,31 @@ For each scan report uploaded to your Armosec cloud account, a new history recor
 
 Below picture illustrates these features:
 
-![Kubescape Cloud Portal Dashboard](assets/images/kubescape_portal_dashboard.png)
+![Kubescape Cloud Portal Dashboard](assets/images/kubescape/portal_dashboard.png)
 
-**What is risk score and how do you interpret it?**
+### Understanding Kubescape Risk Score Value
 
 On each scan, kubescape verifies your resources for potential security risks using internal controls. A [Kubescape Control](https://hub.armosec.io/docs/controls) is a concept used by the kubescape tool to denote the tests used under the hood to check for a particular aspect of your cluster (or resources being scanned). Going further, a framework is a collection of controls or tests used internally to scan your particular resource(s) for issues. So, depending on what framework you use, a different suite of checks is performed (still, some tests share same things in common). Finally, depending on the risk factor associated with each test the final score is computed.
 
-The final score is a positive number ranging from **0** to **100%**. A lower value indicates a good score, whereas a higher value denotes the worst case scenario. So, if you want to be on the safe side you should aim for the lowest value possible. In practice, a score equal to or lower than **30%** should be a good starting point.
+The final score is a positive number ranging from **0** to **100%**. A lower value indicates the best score, whereas a higher value indicates the worst. So, if you want to be on the safe side you should aim for the lowest value possible. In practice, a risk score equal to or lower than **30%** should be a good starting point.
 
 ### Assisted Remediation for Reported Security Issues
 
-Another useful feature provided by the Armosec cloud portal is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the kubescape scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue. 
+Another useful feature provided by the Armosec cloud portal is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the kubescape scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue.
 
 Below picture illustrates this process better:
 
-![Security Compliance Scanning Process](assets/images/security_compliance_scanning_process.png)
+![Security Compliance Scanning Process](assets/images/kubescape/security_compliance_scanning_process.png)
 
 For each reported security issue there is a wrench tool icon displayed which you can click on and get remediation assistance:
 
-![Access Kubescape Cloud Portal Remediation Assistance](assets/images/kubescape_cp_remediation_assist.png)
+![Access Kubescape Cloud Portal Remediation Assistance](assets/images/kubescape/cp_remediation_assist.png)
 
 Next, a new window opens giving you details about each affected Kubernetes object, highlighted in green color:
 
-![Kubescape Cloud Portal Remediation Hints](assets/images/kubescape_cp_remediation_hints.png)
+![Kubescape Cloud Portal Remediation Hints](assets/images/kubescape/cp_remediation_hints.png)
 
-You can click on each control such as `C-0018`, `C-0030`, `C-0086`, etc. and investigate the highlighted issues. Then, you need to take the appropriate action to fix each reported security issue.
+You can click on each control such as `C-0018`, `C-0030`, `C-0086`, etc. and investigate the highlighted issues. You will be presented with suggestions about how to fix each security issue. What's left is to follow the hints and fix each security issue.
 
 ### Triggering Cluster Scans from the Web UI
 
@@ -196,11 +197,11 @@ The Armo cloud portal offers the possibility to trigger cluster scans from web i
 
 Triggering a configuration scanning is done by navigating to the [configuration scanning](https://cloud.armosec.io/configuration-scanning) page, and click on the Scan button. Below picture shows how to accomplish this task:
 
-![Kubescape Trigger Scans from UI](assets/images/kubescape-trigger_UI_scan.png)
+![Kubescape Trigger Scans from UI](assets/images/kubescape/trigger_UI_scan.png)
 
 You can also set or modify the current schedule for automatic scanning if desired by clicking on the Schedule button in the pop-up window that appears after clicking the Scan button. Using the same window, you can select which control frameworks to use for scanning. Below picture shows how to accomplish the tasks:
 
-![Kubescape UI Scan Options](assets/images/kubescape-UI_trigger_options.png)
+![Kubescape UI Scan Options](assets/images/kubescape/UI_trigger_options.png)
 
 ## Step 3 - Configuring Kubescape Automatic Scans for DOKS
 
@@ -291,15 +292,15 @@ Finally, after a few minutes you should be able to see your cluster scan reports
 
 - Configuration scanning results:
 
-   ![Armo Portal Configuration Scanning](assets/images/kubescape_configuration_scanning.png)
+   ![Armo Portal Configuration Scanning](assets/images/kubescape/configuration_scanning.png)
 
 - Image scanning results:
 
-   ![Armo Portal Image Scanning](assets/images/kubescape_image_scanning.png)
+   ![Armo Portal Image Scanning](assets/images/kubescape/image_scanning.png)
 
 - RBAC visualizer results:
 
-   ![Armo Portal RBAC Visualizer](assets/images/kubescape_rbac_visualizer.png)
+   ![Armo Portal RBAC Visualizer](assets/images/kubescape/rbac_visualizer.png)
 
 For more information please visit the [cluster vulnerability scanning](https://hub.armosec.io/docs/cluster-vulnerability-scanning) page from the official documentation.
 
@@ -350,7 +351,7 @@ At a high level overview, the [example CI/CD pipeline](https://github.com/digita
 
 Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
 
-![GitHub Workflow Configuration](assets/images/kubescape_gh_workflow_diagram_code.png)
+![GitHub Workflow Configuration](assets/images/kubescape/gh_workflow_diagram_code.png)
 
 **Notes:**
 
@@ -363,7 +364,7 @@ Kubescape CLI provides a flag named `--fail-threshold` for this purpose. This fl
 
 Below picture illustrates the flow for the example CI/CD pipeline used in this guide:
 
-![Kubescape Pipeline Flow](assets/images/kubescape_pipeline_flow.png)
+![Kubescape Pipeline Flow](assets/images/kubescape/pipeline_flow.png)
 
 Please follow below steps to create and test the kubescape CI/CD GitHub workflow provided in the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) GitHub repository:
 
@@ -375,17 +376,17 @@ Please follow below steps to create and test the kubescape CI/CD GitHub workflow
    - `ARMOSEC_PORTAL_ACCOUNT_ID` - holds your Armo portal user account ID - run: `kubescape config view` to get the ID. If that doesn't work you can find more info [here](https://hub.armosec.io/docs/installation-of-armo-in-cluster#install-a-pre-registered-cluster).
    - `SLACK_WEBHOOK_URL` - holds your [Slack incoming webhook URL](https://api.slack.com/messaging/webhooks) used for kubescape scan notifications.
 3. Navigate to the **Actions** tab of your forked repo and select the **Game 2048 Kubescape CI/CD Example** workflow:
-   ![Game 2048 Main Workflow](assets/images/game-2048-wf-nav.png))
+   ![Game 2048 Main Workflow](assets/images/kubescape/game-2048-wf-nav.png))
 4. Click on the **Run Workflow** button and leave the default values:
-   ![Game 2048 Workflow Triggering](assets/images/game-2048_wf_start.png)
+   ![Game 2048 Workflow Triggering](assets/images/kubescape/game-2048_wf_start.png)
 
 A new entry should appear in below list after clicking the **Run Workflow** green button. You can click on it and observe the pipeline run progress:
 
-![Game 2048 Workflow Progress](assets/images/game-2048-wf-progress.png)
+![Game 2048 Workflow Progress](assets/images/kubescape/game-2048-wf-progress.png)
 
 The pipeline will fail and stop when the **kubescape-nsa-security-check** job runs. This is done on purpose because the default threshold value of `30` for the overall risk score is lower than the expected value. You should also receive a Slack notifications with status details about the workflow run:
 
-![Game 2048 Workflow Slack Notification](assets/images/game-2048-wf-slack-notification.png)
+![Game 2048 Workflow Slack Notification](assets/images/kubescape/game-2048-wf-slack-notification.png)
 
 In the next step you will learn how to investigate the kubescape scan report and fix the issues to lower the risk score.
 
@@ -395,15 +396,15 @@ Whenever the risk score value threshold is not met, the [game-2048 GitHub workfl
 
 First, click on the **kubernetes-sample-apps** entry from the list associated with the master branch:
 
-![Game 2048 Repo Scan Entry](assets/images/game-2048-ks-repo-scan.png)
+![Game 2048 Repo Scan Entry](assets/images/kubescape/game-2048-ks-repo-scan.png)
 
 Next, click on the **deployment.yaml** entry, and check reported issues. Then, click the wrench tool in the upper right part:
 
-![Game 2048 Repo Scan Results](assets/images/game-2048-scan-report.png)
+![Game 2048 Repo Scan Results](assets/images/kubescape/game-2048-scan-report.png)
 
 A new browser window opens showing in detail each control and description. You will also be presented with required actions to remediate the issue (highlighted in green color):
 
-![Game 2048 Reported Scan Controls](assets/images/game-2048-controls-list.png)
+![Game 2048 Reported Scan Controls](assets/images/kubescape/game-2048-controls-list.png)
 
 After collecting all the information from the scan report, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo (located in the `game-2048-example/kustomize/resources` subfolder). The fixes are already in place, you just need to uncomment the last lines from the file. The final `deployment.yaml` file should look like below:
 
@@ -460,7 +461,7 @@ What changed ? The following security fixes were applied:
 
 Finally, commit the changes for the **deployment.yaml** file and push to main branch. After manually triggering the workflow it should complete successfully this time:
 
-![Game 2048 Workflow Success](assets/images/game-2048-wf-success.png)
+![Game 2048 Workflow Success](assets/images/kubescape/game-2048-wf-success.png)
 
 You should also receive a green Slack notification this time from the kubescape scan job. Navigate to the Armo portal link and check if the issues that you fixed recently are gone - there should be none reported.
 
@@ -530,7 +531,7 @@ Next, navigate to the [settings](https://cloud.armosec.io/settings/) page of you
 
 Now, paste your Slack Bot OAuth token (can be found in the **OAuth & Permissions** page from your Slack App page) in the **Insert Token** input field. Finally, select how to get notified and the Slack channel where alerts should be sent. Click on **Set Notifications** button and you're set. Below picture illustrates the details:
 
-![Kubescape Slack Notifications](assets/images/kubescape-slack_notifications.png)
+![Kubescape Slack Notifications](assets/images/kubescape/slack_notifications.png)
 
 After configuring the Slack integration you should receive real time notifications after each cluster scan on the designated channel.
 

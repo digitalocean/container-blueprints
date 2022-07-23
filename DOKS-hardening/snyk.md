@@ -47,12 +47,14 @@ In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform 
 - [Requirements](#requirements)
 - [Step 1 - Getting to Know the Snyk CLI](#step-1---getting-to-know-the-snyk-cli)
 - [Step 2 - Getting to Know the Snyk Web UI](#step-2---getting-to-know-the-snyk-web-ui)
-- [Step 4 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-4---using-snyk-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
+  - [Understanding Snyk Severity Levels](#understanding-snyk-severity-levels)
+  - [Assisted Remediation for Reported Security Issues](#assisted-remediation-for-reported-security-issues)
+- [Step 3 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-3---using-snyk-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
   - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
   - [Investigating Snyk Scan Results and Fixing Reported Issues](#investigating-snyk-scan-results-and-fixing-reported-issues)
   - [Triggering the Snyk CI/CD Workflow Automatically](#triggering-the-snyk-cicd-workflow-automatically)
   - [Treating Exceptions](#treating-exceptions)
-- [Step 5 - Enabling Slack Notifications](#step-5---enabling-slack-notifications)
+- [Step 4 - Enabling Slack Notifications](#step-4---enabling-slack-notifications)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -194,7 +196,45 @@ The following features are available via the web UI:
 
 Please visit the official documentation page to learn more about the [Snyk web UI](https://docs.snyk.io/snyk-web-ui).
 
-## Step 4 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline
+### Understanding Snyk Severity Levels
+
+On each scan, snyk verifies your resources for potential security risks and how each impacts your system. A severity level is applied to a vulnerability, to indicate the risk for that vulnerability in an application.
+
+Severity levels can take one of below values:
+
+- **Low**: the application may expose some data allowing vulnerability mapping, which can be used with other vulnerabilities to attack the application.
+- **Medium**: may allow attackers under some conditions to access sensitive data on your application.
+- **High**: may allow attackers to access sensitive data on your application.
+- **Critical**: may allow attackers to access sensitive data and run code on your application.
+
+The Common Vulnerability Scoring System (CVSS) determines the severity level of a vulnerability. Snyk uses [CVSS framework version 3.1](https://www.first.org/cvss/v3-1/) to communicate the characteristics and severity of vulnerabilities.
+
+Below table shows each severity level mapping:
+
+| **Severity level** | **CVSS score** |
+|:------------------:|:--------------:|
+| Low | 0.0 - 3.9 |
+| Medium | 4.0 - 6.9 |
+| High | 7.0 - 8.9 |
+| Critical | 9.0 - 10.10 |
+
+Please visit the [official documentation](https://docs.snyk.io/introducing-snyk/snyks-core-concepts/severity-levels) page to learn more about severity levels.
+
+### Assisted Remediation for Reported Security Issues
+
+Another useful feature provided by the Snyk web UI is security issues remediation assistance. It means, you receive a recommendation about how to fix each security issue found by the snyk scanner. This is very important because it simplifies the process and closes the loop for each iteration that you need to perform to fix each reported security issue.
+
+Below picture illustrates this process better:
+
+![Security Compliance Scanning Process](assets/images/snyk/security_compliance_scanning_process.png)
+
+For each reported issue there is a button which you can click on and get remediation assistance:
+
+![Snyk Issue Remediation Assistance](assets/images/snyk/issue-card-details.png)
+
+The main procedure is the same for each reported issue. It means, you click on the show details button, then take the suggested steps to apply the fix.
+
+## Step 3 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline
 
 How do you benefit from embedding a security compliance scanning tool in your CI/CD pipeline and avoid unpleasant situations in a production environment?
 
@@ -217,7 +257,7 @@ At a high level overview, the [example CI/CD pipeline](https://github.com/digita
 
 Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
 
-![GitHub Workflow Configuration](assets/images/snyk_gh_workflow_diagram_code.png)
+![GitHub Workflow Configuration](assets/images/snyk/gh_workflow_diagram_code.png)
 
 **Notes:**
 
@@ -230,7 +270,7 @@ Snyk CLI provides a flag named `--severity-threshold` for this purpose. This fla
 
 Below picture illustrates the flow for the example CI/CD pipeline used in this guide:
 
-![Snyk Pipeline Flow](assets/images/snyk_pipeline_flow.png)
+![Snyk Pipeline Flow](assets/images/snyk/pipeline_flow.png)
 
 Please follow below steps to create and test the snyk CI/CD GitHub workflow provided in the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) GitHub repository:
 
@@ -242,17 +282,17 @@ Please follow below steps to create and test the snyk CI/CD GitHub workflow prov
    - `SNYK_TOKEN` - holds your Snyk user account ID - run: `snyk config get api` to get the ID. If that doesn't work, you can retrieve the token from your [user account settings](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-account-preferences-and-settings) page.
    - `SLACK_WEBHOOK_URL` - holds your [Slack incoming webhook URL](https://api.slack.com/messaging/webhooks) used for snyk scan notifications.
 3. Navigate to the **Actions** tab of your forked repo and select the **Game 2048 Snyk CI/CD Example** workflow:
-   ![Game 2048 Main Workflow](assets/images/snyk_game-2048-wf-nav.png))
+   ![Game 2048 Main Workflow](assets/images/snyk/game-2048-wf-nav.png))
 4. Click on the **Run Workflow** button and leave the default values:
-   ![Game 2048 Workflow Triggering](assets/images/snyk_game-2048_wf_start.png)
+   ![Game 2048 Workflow Triggering](assets/images/snyk/game-2048_wf_start.png)
 
 A new entry should appear in below list after clicking the **Run Workflow** green button. You can click on it and observe the pipeline run progress:
 
-![Game 2048 Workflow Progress](assets/images/snyk_game-2048-wf-progress.png)
+![Game 2048 Workflow Progress](assets/images/snyk/game-2048-wf-progress.png)
 
 The pipeline will fail and stop when the **snyk-iac-security-check** job runs. This is done on purpose because the default severity level value, which is **medium**, doesn't meet the expectations. You should also receive a Slack notifications with status details about the workflow run:
 
-![Game 2048 Workflow Slack Notification](assets/images/snyk_game-2048-wf-slack-notification.png)
+![Game 2048 Workflow Slack Notification](assets/images/snyk/game-2048-wf-slack-notification.png)
 
 In the next step you will learn how to investigate the snyk scan report and fix the issues to lower the severity level.
 
@@ -262,15 +302,15 @@ Whenever the severity level threshold is not met, the [game-2048 GitHub workflow
 
 First, click on the **game-2048-example -> kustomize.yaml** entry from the projects list:
 
-![Game 2048 Repo Scan Entry](assets/images/snyk_game-2048-repo-scan.png)
+![Game 2048 Repo Scan Entry](assets/images/snyk/game-2048-repo-scan.png)
 
 Next, tick the **Medium** checkbox in the **Severity** submenu from the left to display only **medium** level issues:
 
-![Game 2048 Repo Medium Severity Issues Results](assets/images/snyk_game-2048-medium-level-issues.png)
+![Game 2048 Repo Medium Severity Issues Results](assets/images/snyk/game-2048-medium-level-issues.png)
 
 Then, you can inspect each reported issue card and check the details. Go ahead and click on the **Show more details** button - you will receive more details about the current issue, and important hints about how to fix it:
 
-![Snyk Issue Card Details](assets/images/snyk_issue-card-details.png)
+![Snyk Issue Card Details](assets/images/snyk/issue-card-details.png)
 
 After collecting all information from each card, you can go ahead and edit the [deployment.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/kustomize/resources/deployment.yaml) file from your repo (located in the `game-2048-example/kustomize/resources` subfolder). The fixes are already in place, you just need to uncomment the last lines from the file. The final `deployment.yaml` file should look like below:
 
@@ -323,7 +363,7 @@ What changed ? The following security fixes were applied:
 
 Finally, commit the changes for the **deployment.yaml** file and push to main branch. After manually triggering the workflow it should complete successfully this time:
 
-![Game 2048 Workflow Success](assets/images/snyk_game-2048-wf-success.png)
+![Game 2048 Workflow Success](assets/images/snyk/game-2048-wf-success.png)
 
 You should also receive a green Slack notification this time from the snyk scan job. Navigate to the Snyk portal link and check if the issues that you fixed recently are gone - there should be none reported.
 
@@ -370,13 +410,13 @@ There are situations when you don't want the final report to be affected by some
 
 You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
 
-## Step 5 - Enabling Slack Notifications
+## Step 4 - Enabling Slack Notifications
 
 You can set up Snyk to send Slack alerts about new vulnerabilities discovered in your projects, and about new upgrades or patches that have become available.
 
 To set it up, you will need to generate a Slack webhook. You can either do this via [Incoming WebHooks](https://api.slack.com/messaging/webhooks) or by creating your own [Slack App](https://api.slack.com/start/building). Once you have generated your Slack Webhook URL, go to your 'Manage organization’ settings, enter the URL, and click the **Connect** button:
 
-![Snyk Slack Integration](assets/images/snyk-slack_notifications.png)
+![Snyk Slack Integration](assets/images/snyk/slack_notifications.png)
 
 ## Conclusion
 
@@ -390,6 +430,7 @@ You can learn more by reading the following additional resources:
 
 - [Snyk Targets and Projects](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects)
 - [More about Snyk Security Levels](https://docs.snyk.io/introducing-snyk/snyks-core-concepts/severity-levels)
+- [Vulnerability Assessment](https://snyk.io/learn/vulnerability-assessment/)
 - [Snyk for IDEs](https://docs.snyk.io/ide-tools)
 - [Discover more Snyk Integrations](https://docs.snyk.io/integrations)
 - [Snyk Web UI Users and Group Management](https://docs.snyk.io/features/user-and-group-management)

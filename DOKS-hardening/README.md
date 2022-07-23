@@ -76,4 +76,4 @@ Without further ado, please pick one to start with from the list below.
 
 | KUBESCAPE | SNYK |
 |:---------------------------------------------------------------------:|:------------------------------------------------------:|
-| [![Kubescape](assets/images/kubescape-logo.png)](kubescape.md) | [![Snyk](assets/images/snyk-logo.png)](snyk.md) |
+| [![Kubescape](assets/images/kubescape/logo.png)](kubescape.md) | [![Snyk](assets/images/snyk/logo.png)](snyk.md) |

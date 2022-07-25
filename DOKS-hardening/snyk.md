@@ -360,14 +360,15 @@ What changed ? The following security fixes were applied:
 - `readOnlyRootFilesystem` - runs container image in read only (cannot alter files by `kubectl exec` in the container).
 - `runAsNonRoot` - runs as the non root user defined by the [USER](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile#L18) directive from the game-2048 project [Dockerfile](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile).
 - `allowPrivilegeEscalation` - setting **allowPrivilegeEscalation** to **false** ensures that no child process of a container can gain more privileges than its parent.
+- `capabilities.drop` - To make containers more secure, you should provide containers with the least amount of privileges it needs to run. In practice, you drop everything by default, then add required capabilities step by step. You can learn more about container capabilities [here](https://learn.snyk.io/lessons/container-does-not-drop-all-default-capabilities/kubernetes/).
 
 Finally, commit the changes for the **deployment.yaml** file and push to main branch. After manually triggering the workflow it should complete successfully this time:
 
 ![Game 2048 Workflow Success](assets/images/snyk/game-2048-wf-success.png)
 
-You should also receive a green Slack notification this time from the snyk scan job. Navigate to the Snyk portal link and check if the issues that you fixed recently are gone - there should be none reported.
+You should also receive a green Slack notification from the snyk scan job. Navigate to the Snyk portal link and check if the issues that you fixed recently are gone - there should be none reported.
 
-A few final checks can be performed as well on the Kubernetes side to verify if the issues were fixed:
+A few final checks can be performed as well on the Kubernetes side to verify if the reported issues were fixed:
 
 1. Check if the game-2048 deployment has a read-only (immutable) filesystem by writing the application **index.html** file:
 
@@ -428,9 +429,10 @@ Finally, you learned how to investigate security scan reports, and take appropri
 
 You can learn more by reading the following additional resources:
 
-- [Snyk Targets and Projects](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects)
+- [Kubernetes Security Best Practices Article from Snyk](https://snyk.io/learn/kubernetes-security/)
 - [More about Snyk Security Levels](https://docs.snyk.io/introducing-snyk/snyks-core-concepts/severity-levels)
 - [Vulnerability Assessment](https://snyk.io/learn/vulnerability-assessment/)
+- [Snyk Targets and Projects](https://docs.snyk.io/introducing-snyk/introduction-to-snyk-projects)
 - [Snyk for IDEs](https://docs.snyk.io/ide-tools)
 - [Discover more Snyk Integrations](https://docs.snyk.io/integrations)
 - [Snyk Web UI Users and Group Management](https://docs.snyk.io/features/user-and-group-management)

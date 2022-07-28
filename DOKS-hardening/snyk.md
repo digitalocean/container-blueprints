@@ -50,11 +50,13 @@ In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform 
   - [Understanding Snyk Severity Levels](#understanding-snyk-severity-levels)
   - [Assisted Remediation for Reported Security Issues](#assisted-remediation-for-reported-security-issues)
 - [Step 3 - Using Snyk to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-3---using-snyk-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
-  - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
-  - [Investigating Snyk Scan Results and Fixing Reported Issues](#investigating-snyk-scan-results-and-fixing-reported-issues)
-  - [Triggering the Snyk CI/CD Workflow Automatically](#triggering-the-snyk-cicd-workflow-automatically)
+  - [GitHub Actions CI/CD Workflow Implementation](#github-actions-cicd-workflow-implementation)
+- [Step 4 - Investigating Snyk Scan Results and Fixing Reported Issues](#step-4---investigating-snyk-scan-results-and-fixing-reported-issues)
+  - [Investigating and Fixing Container Images Vulnerabilities](#investigating-and-fixing-container-images-vulnerabilities)
+  - [Investigating and Fixing Kubernetes Manifests Vulnerabilities](#investigating-and-fixing-kubernetes-manifests-vulnerabilities)
   - [Treating Exceptions](#treating-exceptions)
-- [Step 4 - Enabling Slack Notifications](#step-4---enabling-slack-notifications)
+- [Step 5 - Triggering the Snyk CI/CD Workflow Automatically](#step-5---triggering-the-snyk-cicd-workflow-automatically)
+- [Step 6 - Enabling Slack Notifications](#step-6---enabling-slack-notifications)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -242,31 +244,32 @@ It all starts at the foundation level where software development starts. In gene
 
 So, the security scanning tool (e.g. snyk) acts as a gatekeeper stopping unwanted artifacts getting in your production environment from the early stages of development. In the same manner, upper environments pipelines use snyk to allow or forbid application artifacts entering the final production stage.
 
-### GitHub Actions CI/CD Pipeline Example
+### GitHub Actions CI/CD Workflow Implementation
 
-In this step you will learn how to create and test a simple CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
+In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
 
 The pipeline provided in the following section builds and deploys the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the DigitalOcean [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
-At a high level overview, the [example CI/CD pipeline](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yml) provided in the kubernetes-sample-apps repo is comprised of the following stages:
+At a high level overview, the [example CI/CD workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) provided in the **kubernetes-sample-apps** repo is comprised of the following stages:
 
-1. Application build stage - builds main application artifacts and runs automated tests.
-2. Snyk scan stage - scans for known vulnerabilities in the Kubernetes YAML manifests associated with the application. Application is kustomize based, so the final **kustomize.yaml** is rendered first, then sent for scanning to snyk CLI. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
-3. Application image build stage - builds and tags the applicatin image using the latest git commit SHA. Then the image is pushed to DOCR.
-4. Application deployment stage - deploys the application to Kubernetes (DOKS).
+1. Application build and test stage - builds main application artifacts and runs automated tests.
+2. Snyk application image scan stage - scans application docker image for known vulnerabilities. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent.
+3. Application image build and push stage - builds and tags the application image using the latest git commit SHA. Then the image is pushed to DOCR.
+4. Snyk infrastructure as code (IAC) scan stage - scans for known vulnerabilities in the Kubernetes YAML manifests associated with the application. Acts as a gate, and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
+5. Application deployment stage - deploys the application to Kubernetes (DOKS).
 
-Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
+Below diagram illustrates each job from the pipeline and the associated steps with actions (only relevant configuration is shown):
 
 ![GitHub Workflow Configuration](assets/images/snyk/gh_workflow_diagram_code.png)
 
 **Notes:**
 
-- In case of kustomize based projects (which this guide relies on) it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be fixed. This is due to the fact that the generated kustomize.yaml file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
+- In case of kustomize based projects it's best to render the final manifest in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be patched. This is due to the fact that the resulting manifest file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
 - You can also tell Snyk to scan the entire folder where you keep your kustomize configurations. This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
 
 How do you fail the pipeline if a certain security compliance level is not met ?
 
-Snyk CLI provides a flag named `--severity-threshold` for this purpose. This flag correlates with the overall severity level computed after each scan. In case of Snyk, the severity level takes one of the following values: **low**, **medium** or **high**. You can fail or pass the pipeline based on the severity level value and stop application deployment if conditions are not met.
+Snyk CLI provides a flag named `--severity-threshold` for this purpose. This flag correlates with the overall severity level computed after each scan. In case of Snyk, the severity level takes one of the following values: **low**, **medium**, **high**, or **critical** You can fail or pass the pipeline based on the severity level value and stop application deployment if conditions are not met.
 
 Below picture illustrates the flow for the example CI/CD pipeline used in this guide:
 
@@ -286,21 +289,164 @@ Please follow below steps to create and test the snyk CI/CD GitHub workflow prov
 4. Click on the **Run Workflow** button and leave the default values:
    ![Game 2048 Workflow Triggering](assets/images/snyk/game-2048_wf_start.png)
 
-A new entry should appear in below list after clicking the **Run Workflow** green button. You can click on it and observe the pipeline run progress:
+A new entry should appear in below list after clicking the **Run Workflow** green button. Select the running workflow to observe pipeline progress:
 
 ![Game 2048 Workflow Progress](assets/images/snyk/game-2048-wf-progress.png)
 
-The pipeline will fail and stop when the **snyk-iac-security-check** job runs. This is done on purpose because the default severity level value, which is **medium**, doesn't meet the expectations. You should also receive a Slack notifications with status details about the workflow run:
+The pipeline will fail and stop when the **snyk-container-security-check** job runs. This is expected because the default severity level value used in the workflow input, which is **medium**, doesn't meet the expectations. You should also receive a Slack notifications with details about the workflow run:
 
 ![Game 2048 Workflow Slack Notification](assets/images/snyk/game-2048-wf-slack-notification.png)
 
-In the next step you will learn how to investigate the snyk scan report and fix the issues to lower the severity level.
+In the next step you will learn how to investigate the snyk scan report to fix the issues, lower the severity level, and pass the pipeline.
 
-### Investigating Snyk Scan Results and Fixing Reported Issues
+## Step 4 - Investigating Snyk Scan Results and Fixing Reported Issues
 
-Whenever the severity level threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the snyk scan results link from the received Slack notification. Then, you will be redirected to the Snyk portal dashboard where you can check the **game-2048-example** project.
+Whenever the severity level threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the snyk scan results link from the received Slack notification. Then, you will be redirected to the Snyk portal dashboard where you can check the **game-2048-example** project. You also get security reports published to GitHub and accessible in the **Security** tab of your project repository.
 
-First, click on the **game-2048-example -> kustomize.yaml** entry from the projects list:
+The **game-2048 workflow** runs two security checks:
+
+1. Container level security checks - the **snyk-container-security-check** job is used for this purpose. Equivalent snyk command being used is - `snyk container test <GAME-2048-IMAGE>:<TAG> --file=/path/to/game-2048/Dockerfile`.
+2. Kubernetes manifests misconfiguration checks - the **snyk-iac-security-check** job is used for this purpose. Equivalent snyk command being used is - `snyk iac test /path/to/project/kubernetes/manifests`.
+
+Thus, lowering the severity level and passing the workflow consists of:
+
+1. Investigating and fixing issues reported by the **snyk-container-security-check** job.
+2. Investigating and fixing issues reported by the **snyk-iac-security-check** job.
+
+Next, you will learn how to address each in turn.
+
+### Investigating and Fixing Container Images Vulnerabilities
+
+The sample pipeline provided in this guide runs security checks for the **game-2048 container image** and the associated [Dockerfile](https://github.com/v-ctiutiu/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile) via the **snyk-container-security-check** job.
+
+The **snyk-container-security-check** job runs the following steps:
+
+1. Builds the game-2048 application Docker image locally. This step is implemented using the [docker-build-push](https://github.com/docker/build-push-action) GitHub action.
+2. Runs Snyk security checks for the application container image and Dockerfile. This step is implemented using **snyk container test** command. Scan results are exported using the [GitHub SARIF](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning) format. Security level threshold is controlled via the **--severity-threshold** argument - it is either set to the `snyk_fail_threshold` input parameter if the workflow is manually triggered, or to `SNYK_FAIL_THRESHOLD` environment variable, if workflow runs automatically.
+3. Scan results (SARIF format) are published in the security tab of your application repository. This step is implemented using [codeql](https://github.com/github/codeql-action) GitHub action.
+
+Below snippet shows the main logic of the **snyk-container-security-check** job:
+
+```yaml
+- name: Build App Image for Snyk container scanning
+  uses: docker/build-push-action@v3
+  with:
+    context: ${{ env.PROJECT_DIR }}
+    push: false
+    tags: "${{ secrets.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.sha }}"
+
+- name: Check application container vulnerabilities
+  run: |
+    snyk container test "${{ secrets.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.sha }}" \
+      --file=Dockerfile \
+      --severity-threshold=${{ github.event.inputs.snyk_fail_threshold || env.SNYK_FAIL_THRESHOLD }} \
+      --target-name=${{ env.PROJECT_NAME }} \
+      --target-reference=${{ env.ENVIRONMENT }} \
+      --sarif --sarif-file-output=snyk-container-scan.sarif
+  env:
+    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  working-directory: ${{ env.PROJECT_DIR }}
+
+- name: Upload Snyk report SARIF file
+  if: ${{ always() }}
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: ${{ env.PROJECT_DIR }}/snyk-container-scan.sarif
+    category: snyk-container-scan
+```
+
+In order to fix the reported issues you need to check first the security tab of your **kubernetes-sample-apps** repository fork:
+
+![Snyk SARIF Scan Results](assets/images/snyk/gh_code_scanning_results.png)
+
+You will see a bunch of vulnerabilities for the base docker image mostly in this case. Click on each to expand and see more details:
+
+![Snyk SARIF Issue Details](assets/images/snyk/gh_scan_report_sample_issue.png)
+
+To finish investigations and see recommendations offered by Snyk, you need to inspect the **snyk-container-security-check** job output from the main workflow:
+
+![Snyk Container Fix Recommendations](assets/images/snyk/gh_workflow_container_scan_job_recommendation.png)
+
+**Note:**
+
+**Snyk container test** offers the possibility to export results in SARIF format, but it doesn't know how to upload reports to the Snyk cloud portal. On the other hand, **snyk container monitor** offers the possibility to upload results to the Snyk cloud portal, but it cannot export SARIF. So this guide is using snyk container test with SARIF exporting feature. Some recommendations are not available in the SARIF output unfortunately. So, you must also look in the job console output for recommendations.
+
+The **snyk-container-security-check** job output shows that Snyk recommends to update the base image version from **node:16-slim** to **node:18.6.0-slim**. This change eliminates the high risk issue(s), and also lowers the number of other reported vulnerabilities from **70** to **44** - this is a substantial reduction of almost **50%** !!!
+
+Now, open the game-2048 application Dockerfile from your fork, and change the **FROM** directives to point to the new version:
+
+```dockerfile
+FROM node:18.6.0-slim AS builder
+WORKDIR /usr/src/app
+COPY . .
+RUN npm install --include=dev
+#
+# Build mode can be set via NODE_ENV environment variable (development or production)
+# See project package.json and webpack.config.js
+#
+ENV NODE_ENV=development
+RUN npm run build
+
+FROM node:18.6.0-slim
+RUN npm install http-server -g
+RUN mkdir /public
+WORKDIR /public
+COPY --from=builder /usr/src/app/dist/ ./
+EXPOSE 8080
+USER 1000
+CMD ["http-server"]
+```
+
+Finally, commit changes to your GitHub repository and trigger the workflow again (leaving the default values on). This time the **snyk-container-security-check** job should pass:
+
+![pipeline](assets/images/snyk/gh_workflow_container_scan_success.png)
+
+Going to the security tab of your project, there should be no issues reported.
+
+You will notice that the pipeline still fails, but this time at the **snyk-iac-security-check** phase. This is expected because there are security issues with the Kubernetes manifests used to deploy the application as well. In the next section, you will learn how to investigate this situation and apply Snyk security recommendations to fix the issues.
+
+### Investigating and Fixing Kubernetes Manifests Vulnerabilities
+
+The pipeline is still failing and stops at the **snyk-iac-security-check** job. This is expected because the default severity level value used in the workflow input (**medium**), doesn't meet the security requirements for the project.
+
+The **snyk-iac-security-check** job checks for Kubernetes manifests vulnerabilities (or misconfigurations), and executes the following steps:
+
+1. Snyk security checks for Kubernetes manifests from the **game-2048-example** project directory. This step is implemented using **snyk iac test** command. Scan results are exported using the [GitHub SARIF](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning) format. Security level threshold is controlled via the **--severity-threshold** argument - it is either set to the `snyk_fail_threshold` input parameter if the workflow is manually triggered, or to `SNYK_FAIL_THRESHOLD` environment variable, if workflow runs automatically. Finally, the **--report** argument is also set to send scan results to the Snyk cloud portal.
+2. Scan results (SARIF format) are published in the security tab of your application repository. This step is implemented using the [codeql](https://github.com/github/codeql-action) GitHub action.
+
+Below snippet shows the actual implementation of each step from the **snyk-iac-security-check** job:
+
+```yaml
+- name: Check for Kubernetes manifests vulnerabilities
+  run: |
+    snyk iac test \
+      --severity-threshold=${{ github.event.inputs.snyk_fail_threshold || env.SNYK_FAIL_THRESHOLD }} \
+      --target-name=${{ env.PROJECT_NAME }} \
+      --target-reference=${{ env.ENVIRONMENT }} \
+      --sarif --sarif-file-output=snyk-iac-scan.sarif \
+      --report
+  env:
+    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  working-directory: ${{ env.PROJECT_DIR }}
+
+- name: Upload Snyk IAC SARIF file
+  if: ${{ always() }}
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: ${{ env.PROJECT_DIR }}/snyk-iac-scan.sarif
+    category: snyk-iac-scan
+```
+
+In order to fix the reported issues you have two options:
+
+1. Use the Snyk cloud portal and access the **game-2048** project to check for details:
+  ![Snyk Cloud Portal Option](assets/images/snyk/snyk_cloud_portal_option.png)
+2. Use the security tab of your game-2048 app repository to check for details:
+  ![Snyk GitHub Security Option](assets/images/snyk/snyk_gh_security_option.png)
+
+Either way you will get recommendations about how to fix the reported issues.
+
+For this guide you will be using the Snyk cloud portal to investigate the reported security issues. First, click on the **game-2048-example** entry from the projects list, then select the **kustomize/resources/deployment.yaml** file:
 
 ![Game 2048 Repo Scan Entry](assets/images/snyk/game-2048-repo-scan.png)
 
@@ -308,7 +454,7 @@ Next, tick the **Medium** checkbox in the **Severity** submenu from the left to 
 
 ![Game 2048 Repo Medium Severity Issues Results](assets/images/snyk/game-2048-medium-level-issues.png)
 
-Then, you can inspect each reported issue card and check the details. Go ahead and click on the **Show more details** button - you will receive more details about the current issue, and important hints about how to fix it:
+Then, you can inspect each reported issue card and check the details. Go ahead and click on the **Show more details** button from the **Container is running without root user control** card - you will receive more details about the current issue, and important hints about how to fix it:
 
 ![Snyk Issue Card Details](assets/images/snyk/issue-card-details.png)
 
@@ -366,7 +512,7 @@ Finally, commit the changes for the **deployment.yaml** file and push to main br
 
 ![Game 2048 Workflow Success](assets/images/snyk/game-2048-wf-success.png)
 
-You should also receive a green Slack notification from the snyk scan job. Navigate to the Snyk portal link and check if the issues that you fixed recently are gone - there should be none reported.
+You should also receive a green Slack notification from the snyk scan job. Navigate to the Snyk portal link and check if the issues that you fixed recently are gone - there should be no **medium level** issues reported.
 
 A few final checks can be performed as well on the Kubernetes side to verify if the reported issues were fixed:
 
@@ -391,9 +537,15 @@ A few final checks can be performed as well on the Kubernetes side to verify if 
 
 If all checks pass then you applied the required security recommendations successfully.
 
-### Triggering the Snyk CI/CD Workflow Automatically
+### Treating Exceptions
 
-You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-snyk.yml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yml) file:
+There are situations when you don't want the final report to be affected by some issues which your team consider is safe to ignore. Snyk offers a builtin feature to manage exceptions and overcome this situation.
+
+You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
+
+## Step 5 - Triggering the Snyk CI/CD Workflow Automatically
+
+You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-snyk.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) file:
 
 ```yaml
 on:
@@ -405,13 +557,7 @@ on:
 
 After editing the file, commit the changes to your main branch and you should be ready to go.
 
-### Treating Exceptions
-
-There are situations when you don't want the final report to be affected by some issues which your team consider is safe to ignore. Snyk offers a builtin feature to manage exceptions and overcome this situation.
-
-You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
-
-## Step 4 - Enabling Slack Notifications
+## Step 6 - Enabling Slack Notifications
 
 You can set up Snyk to send Slack alerts about new vulnerabilities discovered in your projects, and about new upgrades or patches that have become available.
 

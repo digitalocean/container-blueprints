@@ -53,11 +53,11 @@ In this guide you will use Kubescape to perform risk analysis for your Kubernete
   - [Provisioning Armo Cluster Components to DOKS](#provisioning-armo-cluster-components-to-doks)
   - [Tweaking Helm Values for the Armo Cluster Components Chart](#tweaking-helm-values-for-the-armo-cluster-components-chart)
 - [Step 4 - Using Kubescape to Scan for Kubernetes Configuration Vulnerabilities in a CI/CD Pipeline](#step-4---using-kubescape-to-scan-for-kubernetes-configuration-vulnerabilities-in-a-cicd-pipeline)
-  - [GitHub Actions CI/CD Pipeline Example](#github-actions-cicd-pipeline-example)
-  - [Investigating Kubescape Scan Results and Fixing Reported Issues](#investigating-kubescape-scan-results-and-fixing-reported-issues)
-  - [Triggering the Kubescape CI/CD Workflow Automatically](#triggering-the-kubescape-cicd-workflow-automatically)
+  - [GitHub Actions CI/CD Workflow Implementation](#github-actions-cicd-workflow-implementation)
+- [Step 5 - Investigating Kubescape Scan Results and Fixing Reported Issues](#step-5---investigating-kubescape-scan-results-and-fixing-reported-issues)
   - [Treating Exceptions](#treating-exceptions)
-- [Step 5 - Enabling Slack Notifications](#step-5---enabling-slack-notifications)
+- [Step 6 - Triggering the Kubescape CI/CD Workflow Automatically](#step-6---triggering-the-kubescape-cicd-workflow-automatically)
+- [Step 7 - Enabling Slack Notifications](#step-7---enabling-slack-notifications)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -336,26 +336,26 @@ It all starts at the foundation level where software development starts. In gene
 
 So, the security scanning tool (e.g. kubescape) acts as a gatekeeper stopping unwanted artifacts in your production environment from the early stages of development. In the same manner, upper environments pipelines use kubescape to allow or forbid application artifacts entering the final production stage.
 
-### GitHub Actions CI/CD Pipeline Example
+### GitHub Actions CI/CD Workflow Implementation
 
-In this step you will learn how to create and test a simple CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
+In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
 
 The pipeline provided in the following section builds and deploys the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the DigitalOcean [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
-At a high level overview, the [example CI/CD pipeline](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) provided in the kubernetes-sample-apps repo is comprised of the following stages:
+At a high level overview, the [example CI/CD workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yaml) provided in the **kubernetes-sample-apps** repo is comprised of the following stages:
 
-1. Application build stage - builds main application artifacts and runs automated tests.
-2. Kubescape scan stage - scans for known vulnerabilities the Kubernetes YAML manifests associated with the application. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
-3. Application image build stage - builds and tags the applicatin image using the latest git commit SHA. Then the image is pushed to DOCR.
+1. Application build and test stage - builds main application artifacts and runs automated tests.
+2. Kubescape scan stage - scans for known vulnerabilities in the Kubernetes YAML manifests associated with the application. Acts as a gate and the final pipeline state (pass/fail) is dependent on this step. In case of failure a Slack notification is sent as well.
+3. Application image build and push stage - builds and tags the application image using the latest git commit SHA. Then the image is pushed to DOCR.
 4. Application deployment stage - deploys the application to Kubernetes (DOKS).
 
-Below diagram illustrates each job from the pipeline and the associated steps with actions (only essential code is shown):
+Below diagram illustrates each job from the pipeline and the associated steps with actions (only relevant configuration is shown):
 
 ![GitHub Workflow Configuration](assets/images/kubescape/gh_workflow_diagram_code.png)
 
 **Notes:**
 
-- In case of kustomize based projects (which this guide relies on) it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be fixed. This is due to the fact that the generated kustomize.yaml file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
+- In case of kustomize based projects it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be patched. This is due to the fact that the resulting manifest file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
 - You can also tell Kubescape to scan the entire folder where you keep your kustomize configurations (current guide relies on this approach). This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
 
 How do you fail the pipeline if a certain security compliance level is not met ?
@@ -380,25 +380,42 @@ Please follow below steps to create and test the kubescape CI/CD GitHub workflow
 4. Click on the **Run Workflow** button and leave the default values:
    ![Game 2048 Workflow Triggering](assets/images/kubescape/game-2048_wf_start.png)
 
-A new entry should appear in below list after clicking the **Run Workflow** green button. You can click on it and observe the pipeline run progress:
+A new entry should appear in below list after clicking the **Run Workflow** green button. Select the running workflow to observe pipeline progress:
 
 ![Game 2048 Workflow Progress](assets/images/kubescape/game-2048-wf-progress.png)
 
-The pipeline will fail and stop when the **kubescape-nsa-security-check** job runs. This is done on purpose because the default threshold value of `30` for the overall risk score is lower than the expected value. You should also receive a Slack notifications with status details about the workflow run:
+The pipeline will fail and stop when the **kubescape-nsa-security-check** job runs. This is expected because the default threshold value of `30` for the overall risk score is lower than the desired value. You should also receive a Slack notifications with details about the workflow run:
 
 ![Game 2048 Workflow Slack Notification](assets/images/kubescape/game-2048-wf-slack-notification.png)
 
-In the next step you will learn how to investigate the kubescape scan report and fix the issues to lower the risk score.
+In the next step you will learn how to investigate the kubescape scan report to fix the issues, lower the risk score, and pass the pipeline.
 
-### Investigating Kubescape Scan Results and Fixing Reported Issues
+## Step 5 - Investigating Kubescape Scan Results and Fixing Reported Issues
 
-Whenever the risk score value threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the kubescape scan results link from the received Slack notification. Then, you will be redirected to the repository scan section from the Armo cloud portal.
+Whenever the risk score value threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yaml) will fail and a Slack notification is sent with additional details.
 
-First, click on the **kubernetes-sample-apps** entry from the list associated with the master branch:
+The **game-2048 workflow** runs one security check (local image scanning is not supported) - Kubernetes manifests misconfiguration checks. The **kubescape-nsa-security-check** job is used for this purpose. Equivalent kubescape command being used is - `kubescape scan framework nsa /path/to/project/kubernetes/manifests`.
+
+Below snippet shows the main logic of the **kubescape-nsa-security-check** job:
+
+```yaml
+- name: Scan Kubernetes YAML files
+  run: |
+    kubescape scan framework nsa kustomize/ \
+      -t ${{ github.event.inputs.kubescape_fail_threshold || env.KUBESCAPE_FAIL_THRESHOLD }} \
+      --submit --account=${{ secrets.ARMOSEC_PORTAL_ACCOUNT_ID }}
+  working-directory: ${{ env.PROJECT_DIR }}
+```
+
+Above configuration tells kubescape CLI to start a new scan for all Kubernetes manifests present in the `kustomize/` directory using the **NSA** framework. It also specifies what threshold level to use via the **-t** flag, and to submit final results to Armo cloud portal (the **--submit** flag in conjunction with **--acount**).
+
+Thus, lowering the risk score value and passing the workflow consists of investigating and fixing issues reported by the **kubescape-nsa-security-check** job. Next, you will learn how to address security issues reported by this job.
+
+To check the status report, you can click on the kubescape scan results link from the received Slack notification. Then, click on the **REPOSITORIES SCAN** scan button from the left menu in the Armo cloud portal. Now, click on the **kubernetes-sample-apps** entry from the list:
 
 ![Game 2048 Repo Scan Entry](assets/images/kubescape/game-2048-ks-repo-scan.png)
 
-Next, click on the **deployment.yaml** entry, and check reported issues. Then, click the wrench tool in the upper right part:
+Next, click on the **deployment.yaml** entry, and then hit the wrench tool from the upper right part:
 
 ![Game 2048 Repo Scan Results](assets/images/kubescape/game-2048-scan-report.png)
 
@@ -489,9 +506,15 @@ A few final checks can be performed as well on the Kubernetes side to verify if 
 
 If all checks pass then you applied the required security recommendations successfully.
 
-### Triggering the Kubescape CI/CD Workflow Automatically
+### Treating Exceptions
 
-You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-kubescape.yml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yml) file:
+There are situations when you don't want the final risk score to be affected by some reported issues which your team consider is safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
+
+You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
+
+## Step 6 - Triggering the Kubescape CI/CD Workflow Automatically
+
+You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-kubescape.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yaml) file:
 
 ```yaml
 on:
@@ -503,13 +526,7 @@ on:
 
 After editing the file, commit the changes to your main branch and you should be ready to go.
 
-### Treating Exceptions
-
-There are situations when you don't want the final risk score to be affected by some reported issues which your team consider is safe to ignore. Kubescape offers a builtin feature to manage exceptions and overcome this situation.
-
-You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
-
-## Step 5 - Enabling Slack Notifications
+## Step 7 - Enabling Slack Notifications
 
 The Armo cloud portal supports Slack integration for sending real time alerts after each cluster scan. This feature requires the Armo cloud components Helm chart to be installed in your DOKS cluster as explained in [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks).
 

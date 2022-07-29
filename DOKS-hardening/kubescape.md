@@ -4,7 +4,7 @@
 
 [Kubescape](https://github.com/armosec/kubescape/) is a Kubernetes open-source tool developed by [Armosec](https://www.armosec.io) used for risk analysis, security compliance, RBAC visualizer, and image vulnerabilities scanning. In addition, Kubescape is able to scan Kubernetes manifests to detect potential configuration issues that expose your deployments to the risk of attack. It can also scan Helm charts, detect RBAC (role-based-access-control) violations, performs risk score calculations and shows risk trends over time.
 
-Kubescape key features:
+**Kubescape key features:**
 
 - Detect Kubernetes misconfigurations and provide remediation assistance via the [Armosec Cloud Portal](https://cloud.armosec.io).
 - Risk analysis and trending over time via the [Armosec Cloud Portal](https://cloud.armosec.io).
@@ -14,26 +14,26 @@ Kubescape key features:
 - Image scanning - scan images for vulnerabilities and easily see, sort and filter (which vulnerability to patch first).
 - Simplifies RBAC complexity by providing an easy-to-understand visual graph which shows the RBAC configuration in your cluster.
 
-Kubescape can be run in different ways:
+**Kubescape can be run in different ways:**
 
 - Via the command line interface (or CLI). This the preferred way to run inside scripts and various automations, including CI/CD pipelines. Results can be uploaded to the [Armosec Cloud Portal](https://cloud.armosec.io) for analysis.
 - As a cronjob inside your Kubernetes cluster. In this mode, Kubescape is constantly watching your Kubernetes cluster for changes and uploads scan results to the [Armosec Cloud Portal](https://cloud.armosec.io). This feature works only if you deploy [Armo Cluster Components](https://hub.armosec.io/docs/installation-of-armo-in-cluster) in your DOKS cluster.
 - Via the [Armosec Cloud Portal](https://cloud.armosec.io) web interface. You can trigger [configuration scanning](https://cloud.armosec.io/configuration-scanning), [Image Scanning](https://cloud.armosec.io/image-scanning), view and inspect [RBAC rules](https://cloud.armosec.io/rbac-visualizer), customize frameworks, etc. This feature works only if you deploy [Armo Cluster Components](https://hub.armosec.io/docs/installation-of-armo-in-cluster) in your DOKS cluster.
 - Inside your [Visual Studio Code IDE](https://hub.armosec.io/docs/visual-studio-code). This way you can spot issues very quickly in the early stages of development.
 
-Kubescape is using different frameworks to detect misconfigurations such as:
+**Kubescape is using different frameworks to detect misconfigurations such as:**
 
 - [ArmoBest](https://www.armosec.io/blog/armobest-kubernetes-framework/)
 - [NSA](https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/2716980/nsa-cisa-release-kubernetes-hardening-guidance/)
 - [MITRE ATT&CK](https://www.microsoft.com/security/blog/2021/03/23/secure-containerized-environments-with-updated-threat-matrix-for-kubernetes/)
 
-Is Kubescape free ?
+**Is Kubescape free?**
 
 Yes, the tooling and community edition is free forever, except the cloud portal backend implementation and maybe some other advanced features. There is also a limitation on the maximum number of worker nodes you can scan per cluster (up to 10). Your scan reports data retention is limited to one month in the Armo cloud portal.
 
 See [pricing plans](https://www.armosec.io/pricing/) for more information.
 
-Is Kubescape open source ?
+**Is Kubescape open source?**
 
 Yes, the tooling for sure is. You can visit the [Armo GitHub home page](https://github.com/armosec) to find more details about each component implementation. The cloud portal backend implementation is not open source.
 
@@ -56,6 +56,7 @@ In this guide you will use Kubescape to perform risk analysis for your Kubernete
   - [GitHub Actions CI/CD Workflow Implementation](#github-actions-cicd-workflow-implementation)
 - [Step 5 - Investigating Kubescape Scan Results and Fixing Reported Issues](#step-5---investigating-kubescape-scan-results-and-fixing-reported-issues)
   - [Treating Exceptions](#treating-exceptions)
+  - [Kubescape for IDEs - Shift Left Security Best Practices](#kubescape-for-ides---shift-left-security-best-practices)
 - [Step 6 - Triggering the Kubescape CI/CD Workflow Automatically](#step-6---triggering-the-kubescape-cicd-workflow-automatically)
 - [Step 7 - Enabling Slack Notifications](#step-7---enabling-slack-notifications)
 - [Conclusion](#conclusion)
@@ -338,7 +339,7 @@ So, the security scanning tool (e.g. kubescape) acts as a gatekeeper stopping un
 
 ### GitHub Actions CI/CD Workflow Implementation
 
-In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
+In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows. To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
 
 The pipeline provided in the following section builds and deploys the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the DigitalOcean [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
@@ -358,7 +359,7 @@ Below diagram illustrates each job from the pipeline and the associated steps wi
 - In case of kustomize based projects it's best to render the final manifest via the `kubectl kustomize </path/to/kustomization_/file>` command in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be patched. This is due to the fact that the resulting manifest file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
 - You can also tell Kubescape to scan the entire folder where you keep your kustomize configurations (current guide relies on this approach). This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
 
-How do you fail the pipeline if a certain security compliance level is not met ?
+How do you fail the pipeline if a certain security compliance level is not met?
 
 Kubescape CLI provides a flag named `--fail-threshold` for this purpose. This flag correlates with the overall risk score computed after each scan. You can fail or pass the pipeline based on the threshold value and stop application deployment if conditions are not met.
 
@@ -376,7 +377,7 @@ Please follow below steps to create and test the kubescape CI/CD GitHub workflow
    - `ARMOSEC_PORTAL_ACCOUNT_ID` - holds your Armo portal user account ID - run: `kubescape config view` to get the ID. If that doesn't work you can find more info [here](https://hub.armosec.io/docs/installation-of-armo-in-cluster#install-a-pre-registered-cluster).
    - `SLACK_WEBHOOK_URL` - holds your [Slack incoming webhook URL](https://api.slack.com/messaging/webhooks) used for kubescape scan notifications.
 3. Navigate to the **Actions** tab of your forked repo and select the **Game 2048 Kubescape CI/CD Example** workflow:
-   ![Game 2048 Main Workflow](assets/images/kubescape/game-2048-wf-nav.png))
+   ![Game 2048 Main Workflow](assets/images/kubescape/game-2048-wf-nav.png)
 4. Click on the **Run Workflow** button and leave the default values:
    ![Game 2048 Workflow Triggering](assets/images/kubescape/game-2048_wf_start.png)
 
@@ -470,7 +471,7 @@ spec:
 
 The [C-0055](https://hub.armosec.io/docs/c-0055) suggestions were omitted in this example for simplicity. You can read more about secure computing mode in Kubernetes [here](https://kubernetes.io/docs/tutorials/security/seccomp/).
 
-What changed ? The following security fixes were applied:
+What changed? The following security fixes were applied:
 
 - `readOnlyRootFilesystem` - runs container image in read only (cannot alter files by `kubectl exec` in the container).
 - `runAsNonRoot` - runs as the non root user defined by the [USER](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile#L18) directive from the game-2048 project [Dockerfile](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile).
@@ -512,6 +513,19 @@ There are situations when you don't want the final risk score to be affected by 
 
 You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
 
+### Kubescape for IDEs - Shift Left Security Best Practices
+
+A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. This approach is called [Shift Left Security](https://www.armosec.io/blog/kubernetes-security-best-practices/). It means, you shift (or move) the vulnerability scan step before other processes, such as the automation running inside your CI/CD pipeline(s).
+
+Kubescape offers support for shift left testing via dedicated support, such as:
+
+1. [Visual Studio Code extension](https://hub.armosec.io/docs/visual-studio-code).
+2. [Kubernetes Lens extension](https://hub.armosec.io/docs/kubernetes-lens).
+
+Above plugins will help you detect and fix issues in the early stages of development, thus eliminating frustration, costs, and security flaws in production systems. Also, it helps you to reduce the iterations end human effort on the long run. As an example, for each reported security issue by your CI/CD automation you need to go back and fix the issue in your code, commit changes, wait for the CI/CD automation again, then repeat in case of failure.
+
+You can read more about these features by navigating to the [Kubescape documentation](https://hub.armosec.io/docs/) page, then search in the **INTEGRATIONS** section.
+
 ## Step 6 - Triggering the Kubescape CI/CD Workflow Automatically
 
 You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-kubescape.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-kubescape.yaml) file:
@@ -545,7 +559,7 @@ First, you need to create a [Slack App](https://api.slack.com/apps/new). Then, y
 - `im:read` - View basic information about direct messages your Slack App has been added to.
 - `mpim:read` - View basic information about group direct messages your Slack App has been added to.
 
-Next, navigate to the [settings](https://cloud.armosec.io/settings/) page of your Armo cloud portal account (top right gear icon). From there, select [Integrations](https://cloud.armosec.io/settings/integrations/) page, then [Slack](https://cloud.armosec.io/settings/integrations/slack/). 
+Next, navigate to the [settings](https://cloud.armosec.io/settings/) page of your Armo cloud portal account (top right gear icon). From there, select [Integrations](https://cloud.armosec.io/settings/integrations/) page, then [Slack](https://cloud.armosec.io/settings/integrations/slack/).
 
 Now, paste your Slack Bot OAuth token (can be found in the **OAuth & Permissions** page from your Slack App page) in the **Insert Token** input field. Finally, select how to get notified and the Slack channel where alerts should be sent. Click on **Set Notifications** button and you're set. Below picture illustrates the details:
 
@@ -559,14 +573,15 @@ If you receive notifications similar to above, then you configured the Armosec K
 
 ## Conclusion
 
-In this guide you learned how to use one of the most popular Kubernetes vulnerability scanning tool - [Kubescape](https://github.com/armosec/kubescape). You also learned how to perform cluster and repository scanning (YAML manifests) using the kubescape CLI. Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
+In this guide you learned how to use one of the most popular Kubernetes vulnerability scanning tool - [Kubescape](https://github.com/armosec/kubescape). You also learned how to perform cluster and repository scanning (YAML manifests) using the kubescape CLI. Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline implemented using GitHub workflows.
 
-Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example - the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
+Finally, you learned how to investigate vulnerability scan reports, apply fixes to remediate the situation, and reduce the risk score to a minimum via a practical example - the [game-2048](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
 ## Additional Resources
 
 You can learn more by reading the following additional resources:
 
+- [Kubernetes Security Best Practices by Armo](https://www.armosec.io/blog/kubernetes-security-best-practices/)
 - [Catch Security Issues Ahead of Time by Armosec](https://www.armosec.io/blog/find-kubernetes-security-issues-while-coding/)
 - [Secure your Kubernetes Deployments by Armosec](https://www.armosec.io/blog/secure-kubernetes-deployment/)
 - [Learn More about Armosec Host Scanners](https://hub.armosec.io/docs/host-sensor)

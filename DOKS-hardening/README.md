@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This guide provides a short introduction about Kubernetes security best practices in general (applies to [DOKS](https://docs.digitalocean.com/products/kubernetes/) as well). Then, a practical example is given about how to integrate popular vulnerability scan tools (e.g. [Kubescape](https://github.com/armosec/kubescape/)) in a traditional CI/CD pipeline implemented using [GitHub workflows](https://docs.github.com/en/actions/using-workflows).
+This guide provides a short introduction about Kubernetes security best practices in general (applies to [DOKS](https://docs.digitalocean.com/products/kubernetes/) as well). Then, a practical example is given about how to integrate popular vulnerability scan tools (e.g. [Kubescape](https://github.com/armosec/kubescape/)) in a traditional CI/CD pipeline implemented using [GitHub Workflows](https://docs.github.com/en/actions/using-workflows).
 
 [Kubernetes](https://kubernetes.io) gained a lot of popularity over time and for a good reason. It's widely being used today in every modern infrastructure based on microservices. Kubernetes takes away the burden of managing high availability (or HA) setups, such as scheduling and replicating workloads on different nodes, thus assuring resiliency. Then, at the networking layer it also takes care of load balancing and distributes traffic evenly to workloads. At its core, Kubernetes is a modern container scheduler offering additional features such as application configuration and secrets management, to mention a few. You can also set quotas and control applications access to various resources (such as CPU and memory) by fine tuning resource limits requests. In terms of security, you can restrict who has access to what resources via RBAC policies, which is an acronym standing for Resource Based Access Control.
 
@@ -17,7 +17,7 @@ Below picture shows the typical architecture of a Kubernetes cluster and possibl
 
 Cloud providers (including [DigitalOcean](https://www.digitalocean.com)) offer today ready to run [Kubernetes](https://docs.digitalocean.com/products/kubernetes/) services, thus taking away the burden of managing the cluster itself (or the control plane component). This way, you can focus more on application development rather than spending time to deal with infrastructure tasks, such as control plane management, worker nodes maintenance (e.g. performing regular OS updates and security patching), etc. DigitalOcean offers an easy to use Kubernetes platform called [DOKS](https://docs.digitalocean.com/products/kubernetes/), which stands for DigitalOcean Kubernetes. DOKS is a [managed Kubernetes](https://docs.digitalocean.com/products/kubernetes/resources/managed/) service that lets you deploy Kubernetes clusters without dealing with the complexities of installing and managing control plane components and containerized infrastructure.
 
-Going further, a very important aspect which is often overlooked is **security**. Security is a broader term and covers many areas such as: software supply chain security, infrastructure security, networking security, etc. Because Kubernetes is such popular nowadays it has become a potential target fot attack so care must be taken. Another aspect to look at is the Kubernetes ecosystem complexity. In general, complex systems can have multiple weak points, thus opening multiple doors to external attacks and exploits. Most of the security flaws are caused by improperly configured Kubernetes clusters. A typical example is cluster administrators forgetting to set RBAC rules, or allowing applications to run as root in the Pod specification. Going further, Kubernetes offers a simple but very powerful isolation mechanism (both at the application level and networking layer) - [namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/). By using namespaces administrators can isolate application resources and configure access rules to various users and/or teams in a more controlled fashion.
+Going further, a very important aspect which is often overlooked is **security**. Security is a broader term and covers many areas such as: software supply chain security, infrastructure security, networking security, etc. Because Kubernetes is so popular it has become a potential target fot attack so care must be taken. Another aspect to look at is the Kubernetes ecosystem complexity. In general, complex systems can have multiple weak points, thus opening multiple doors to external attacks and exploits. Most of the security flaws are caused by improperly configured Kubernetes clusters. A typical example is cluster administrators forgetting to set RBAC rules, or allowing applications to run as root in the Pod specification. Going further, Kubernetes offers a simple but very powerful isolation mechanism (both at the application level and networking layer) - [namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/). By using namespaces administrators can isolate application resources and configure access rules to various users and/or teams in a more controlled fashion.
 
 Kubernetes hardening is a multi step process, and usually consists of:
 
@@ -69,12 +69,12 @@ Hardening the Kubernetes applications environment and software supply chain can 
 
 The first step required to harden your Kubernetes environment is to use a dedicated tool that continuously scans for vulnerabilities both at the CI/CD pipeline level and the entire Kubernetes cluster.
 
-There are many vulnerability scanning tools available but this guide focuses on two implementations - [Armosec Kubescape](https://github.com/armosec/kubescape/) and [Snyk](https://snyk.io).
+There are many vulnerability scanning tools available but this guide focuses on two implementations - [Snyk](https://snyk.io) and [Armosec Kubescape](https://github.com/armosec/kubescape/).
 
 Without further ado, please pick one to start with from the list below.
 
 ## Kubernetes Vulnerability Scanning Tools
 
-| KUBESCAPE | SNYK |
-|:---------------------------------------------------------------------:|:------------------------------------------------------:|
-| [![Kubescape](assets/images/kubescape/logo.png)](kubescape.md) | [![Snyk](assets/images/snyk/logo.png)](snyk.md) |
+| SNYK | KUBESCAPE |
+|:-----------------------------------------------:|:--------------------------------------------------------------:|
+| [![Snyk](assets/images/snyk/logo.png)](snyk.md) | [![Kubescape](assets/images/kubescape/logo.png)](kubescape.md) |

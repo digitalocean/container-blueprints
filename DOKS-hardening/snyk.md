@@ -4,27 +4,27 @@
 
 [Snyk](https://snyk.io) is defined as a developer security platform and its main goal is to help you detect and fix vulnerabilities in your application source code, third party dependencies, container images, and infrastructure configuration files (e.g. Kubernetes, Terraform, etc).
 
-Snyk is divided into four components:
+**Snyk is divided into four components:**
 
 1. [Snyk Code](https://docs.snyk.io/products/snyk-code) - helps you find and fix vulnerabilities in your application source code.
 2. [Snyk Open Source](https://docs.snyk.io/products/snyk-open-source) - helps you find and fix vulnerabilities for any 3rd party libraries or dependencies your application relies on.
 3. [Snyk Container](https://docs.snyk.io/products/snyk-container) - helps you find and fix vulnerabilities in container images or Kubernetes workloads used in your cluster.
 4. [Snyk Infrastructure as Code](https://docs.snyk.io/products/snyk-infrastructure-as-code) - helps you find and fix misconfigurations in your Kubernetes manifests (Terraform, CloudFormation and Azure are supported as well).
 
-Snyk can be run in different ways:
+**Snyk can be run in different ways:**
 
 - Via the command line interface using [Snyk CLI](https://docs.snyk.io/snyk-cli). This the preferred way to run inside scripts and various automations, including CI/CD pipelines.
 - In the browser as [Snyk Web UI](https://docs.snyk.io/snyk-web-ui). Snyk offers a cloud based platform as well which you can use to investigate scan reports, receive hints and take required actions to fix reported issues, etc. You can also connect GitHub repositories and perform scans/audits from the web interface.
 - Via [IDE plugins](https://docs.snyk.io/ide-tools). This way you can spot issues early as you're developing using your favorite IDE (e.g. Visual Studio Code).
 - Programmatically, via the [Snyk API](https://support.snyk.io/hc/en-us/categories/360000665657-Snyk-API). Snyk API is available to customers on [paid plans](https://snyk.io/plans) and allows you to programmatically integrate with Snyk.
 
-Is Snyk free ?
+**Is Snyk free?**
 
 Yes, the tooling is free, except [Snyk API](https://support.snyk.io/hc/en-us/categories/360000665657-Snyk-API) and some advanced features from the web UI (such as advanced reporting). There is also a limitation on the number of tests you can perform per month.
 
 See [pricing plans](https://snyk.io/plans/) for more information.
 
-Is Snyk open source ?
+**Is Snyk open source?**
 
 Yes, the tooling and Snyk CLI for sure is. You can visit the [Snyk GitHub home page](https://github.com/snyk) to find more details about each component implementation. The cloud portal and all paid features such as the rest API implementation is not open source.
 
@@ -55,6 +55,7 @@ In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform 
   - [Investigating and Fixing Container Images Vulnerabilities](#investigating-and-fixing-container-images-vulnerabilities)
   - [Investigating and Fixing Kubernetes Manifests Vulnerabilities](#investigating-and-fixing-kubernetes-manifests-vulnerabilities)
   - [Treating Exceptions](#treating-exceptions)
+  - [Snyk for IDEs - Shift Left Security Best Practices](#snyk-for-ides---shift-left-security-best-practices)
 - [Step 5 - Triggering the Snyk CI/CD Workflow Automatically](#step-5---triggering-the-snyk-cicd-workflow-automatically)
 - [Step 6 - Enabling Slack Notifications](#step-6---enabling-slack-notifications)
 - [Conclusion](#conclusion)
@@ -246,7 +247,7 @@ So, the security scanning tool (e.g. snyk) acts as a gatekeeper stopping unwante
 
 ### GitHub Actions CI/CD Workflow Implementation
 
-In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows.  To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
+In this step you will learn how to create and test a sample CI/CD pipeline with integrated vulnerability scanning via GitHub workflows. To learn the fundamentals of using Github Actions with DigitalOcean Kubernetes, refer to this [tutorial](https://docs.digitalocean.com/tutorials/enable-push-to-deploy/).
 
 The pipeline provided in the following section builds and deploys the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the DigitalOcean [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
@@ -267,7 +268,7 @@ Below diagram illustrates each job from the pipeline and the associated steps wi
 - In case of kustomize based projects it's best to render the final manifest in order to capture and scan everything (including remote resources). On the other hand, it can be hard to identify which Kubernetes resource needs to be patched. This is due to the fact that the resulting manifest file is comprised of all resources to be applied. This is how kustomize works - it gathers all configuration fragments from each overlay and applies them over a base to build the final compound.
 - You can also tell Snyk to scan the entire folder where you keep your kustomize configurations. This way, it's easier to identify what resource needs to be fixed in your repository. Remote resources used by kustomize need to be fixed upstream. Also, Kubernetes secrets and ConfigMaps generated via kustomize are not captured.
 
-How do you fail the pipeline if a certain security compliance level is not met ?
+How do you fail the pipeline if a certain security compliance level is not met?
 
 Snyk CLI provides a flag named `--severity-threshold` for this purpose. This flag correlates with the overall severity level computed after each scan. In case of Snyk, the severity level takes one of the following values: **low**, **medium**, **high**, or **critical** You can fail or pass the pipeline based on the severity level value and stop application deployment if conditions are not met.
 
@@ -285,7 +286,7 @@ Please follow below steps to create and test the snyk CI/CD GitHub workflow prov
    - `SNYK_TOKEN` - holds your Snyk user account ID - run: `snyk config get api` to get the ID. If that doesn't work, you can retrieve the token from your [user account settings](https://docs.snyk.io/snyk-web-ui/getting-started-with-the-snyk-web-ui#manage-account-preferences-and-settings) page.
    - `SLACK_WEBHOOK_URL` - holds your [Slack incoming webhook URL](https://api.slack.com/messaging/webhooks) used for snyk scan notifications.
 3. Navigate to the **Actions** tab of your forked repo and select the **Game 2048 Snyk CI/CD Example** workflow:
-   ![Game 2048 Main Workflow](assets/images/snyk/game-2048-wf-nav.png))
+   ![Game 2048 Main Workflow](assets/images/snyk/game-2048-wf-nav.png)
 4. Click on the **Run Workflow** button and leave the default values:
    ![Game 2048 Workflow Triggering](assets/images/snyk/game-2048_wf_start.png)
 
@@ -301,7 +302,7 @@ In the next step you will learn how to investigate the snyk scan report to fix t
 
 ## Step 4 - Investigating Snyk Scan Results and Fixing Reported Issues
 
-Whenever the severity level threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) will fail and a Slack notification is sent with additional details. To check the status report, you can click on the snyk scan results link from the received Slack notification. Then, you will be redirected to the Snyk portal dashboard where you can check the **game-2048-example** project. You also get security reports published to GitHub and accessible in the **Security** tab of your project repository.
+Whenever the severity level threshold is not met, the [game-2048 GitHub workflow](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) will fail and a Slack notification is sent with additional details. You also get security reports published to GitHub and accessible in the **Security** tab of your project repository.
 
 The **game-2048 workflow** runs two security checks:
 
@@ -501,7 +502,7 @@ spec:
                 - all
 ```
 
-What changed ? The following security fixes were applied:
+What changed? The following security fixes were applied:
 
 - `readOnlyRootFilesystem` - runs container image in read only (cannot alter files by `kubectl exec` in the container).
 - `runAsNonRoot` - runs as the non root user defined by the [USER](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile#L18) directive from the game-2048 project [Dockerfile](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/Dockerfile).
@@ -543,6 +544,21 @@ There are situations when you don't want the final report to be affected by some
 
 You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
 
+### Snyk for IDEs - Shift Left Security Best Practices
+
+A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. This approach is called [Shift Left Security](https://snyk.io/learn/shift-left-security/). It means, you shift (or move) the vulnerability scan step before other processes, such as the automation running inside your CI/CD pipeline(s).
+
+Snyk offers support for shift left testing via dedicated plugins/extensions for a variety of IDEs, such as:
+
+1. [Eclipse plugin](https://docs.snyk.io/ide-tools/eclipse-plugin).
+2. [JetBrains plugin](https://docs.snyk.io/ide-tools/jetbrains-plugins).
+3. [Visual Studio extension](https://docs.snyk.io/ide-tools/visual-studio-extension).
+4. [Visual Studio Code extension](https://docs.snyk.io/ide-tools/visual-studio-code-extension-for-snyk-code).
+
+Above plugins will help you detect and fix issues in the early stages of development, thus eliminating frustration, costs, and security flaws in production systems. Also, it helps you to reduce the iterations end human effort on the long run. As an example, for each reported security issue by your CI/CD automation you need to go back and fix the issue in your code, commit changes, wait for the CI/CD automation again, then repeat in case of failure.
+
+You can read more about these features on the [Snyk for IDEs](https://docs.snyk.io/ide-tools) page from the official documentation.
+
 ## Step 5 - Triggering the Snyk CI/CD Workflow Automatically
 
 You can set the workflow to trigger automatically on each commit or PR against the main branch by uncommenting the following lines at the top of the [game-2048-snyk.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/.github/workflows/game-2048-snyk.yaml) file:
@@ -567,9 +583,9 @@ To set it up, you will need to generate a Slack webhook. You can either do this 
 
 ## Conclusion
 
-In this guide you learned how to use a pretty flexible and powerful Kubernetes vulnerability scanning tool - [Snyk](https://snyk.io). You also learned how to perform repository scanning (YAML manifests) using the snyk CLI. Then, you learned how to integrate the vulnerability scanning tool in a traditional CI/CD pipeline using GitHub workflows.
+In this guide you learned how to use a pretty flexible and powerful Kubernetes vulnerability scanning tool - [Snyk](https://snyk.io). Then, you learned how to integrate the Snyk vulnerability scanning tool in a traditional CI/CD pipeline implemented using GitHub workflows.
 
-Finally, you learned how to investigate security scan reports, and take appropriate actions to remediate the situation by using a practical example - the [game-2048-example](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
+Finally, you learned how to investigate vulnerability scan reports, apply fixes to remediate the situation, and reduce security risks to a minimum via a practical example - the [game-2048](https://github.com/digitalocean/kubernetes-sample-apps/tree/master/game-2048-example) application from the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository.
 
 ## Additional Resources
 

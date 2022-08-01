@@ -55,7 +55,7 @@ In this guide you will use [Snyk CLI](https://docs.snyk.io/snyk-cli) to perform 
   - [Investigating and Fixing Container Images Vulnerabilities](#investigating-and-fixing-container-images-vulnerabilities)
   - [Investigating and Fixing Kubernetes Manifests Vulnerabilities](#investigating-and-fixing-kubernetes-manifests-vulnerabilities)
   - [Treating Exceptions](#treating-exceptions)
-  - [Snyk for IDEs - Shift Left Security Best Practices](#snyk-for-ides---shift-left-security-best-practices)
+  - [Snyk for IDEs](#snyk-for-ides)
 - [Step 5 - Triggering the Snyk CI/CD Workflow Automatically](#step-5---triggering-the-snyk-cicd-workflow-automatically)
 - [Step 6 - Enabling Slack Notifications](#step-6---enabling-slack-notifications)
 - [Conclusion](#conclusion)
@@ -546,7 +546,7 @@ You can read more about this feature [here](https://docs.snyk.io/features/fixing
 
 ### Snyk for IDEs
 
-A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. 
+A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle.
 
 Snyk offers support for a variety of IDEs, such as:
 

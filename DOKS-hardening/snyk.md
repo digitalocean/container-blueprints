@@ -544,11 +544,11 @@ There are situations when you don't want the final report to be affected by some
 
 You can read more about this feature [here](https://docs.snyk.io/features/fixing-and-prioritizing-issues/issue-management/ignore-issues).
 
-### Snyk for IDEs - Shift Left Security Best Practices
+### Snyk for IDEs
 
-A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. This approach is called [Shift Left Security](https://snyk.io/learn/shift-left-security/). It means, you shift (or move) the vulnerability scan step before other processes, such as the automation running inside your CI/CD pipeline(s).
+A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. 
 
-Snyk offers support for shift left testing via dedicated plugins/extensions for a variety of IDEs, such as:
+Snyk offers support for a variety of IDEs, such as:
 
 1. [Eclipse plugin](https://docs.snyk.io/ide-tools/eclipse-plugin).
 2. [JetBrains plugin](https://docs.snyk.io/ide-tools/jetbrains-plugins).

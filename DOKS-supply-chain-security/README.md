@@ -1,4 +1,4 @@
-# DigitalOcean Kubernetes (DOKS) Hardening
+# DigitalOcean Kubernetes Supply Chain Security
 
 ## Introduction
 

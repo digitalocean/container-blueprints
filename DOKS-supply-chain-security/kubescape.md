@@ -56,7 +56,7 @@ In this guide you will use Kubescape to perform risk analysis for your Kubernete
   - [GitHub Actions CI/CD Workflow Implementation](#github-actions-cicd-workflow-implementation)
 - [Step 5 - Investigating Kubescape Scan Results and Fixing Reported Issues](#step-5---investigating-kubescape-scan-results-and-fixing-reported-issues)
   - [Treating Exceptions](#treating-exceptions)
-  - [Kubescape for IDEs - Shift Left Security Best Practices](#kubescape-for-ides---shift-left-security-best-practices)
+  - [Kubescape for IDEs](#kubescape-for-ides)
 - [Step 6 - Triggering the Kubescape CI/CD Workflow Automatically](#step-6---triggering-the-kubescape-cicd-workflow-automatically)
 - [Step 7 - Enabling Slack Notifications](#step-7---enabling-slack-notifications)
 - [Conclusion](#conclusion)
@@ -513,11 +513,11 @@ There are situations when you don't want the final risk score to be affected by 
 
 You can read more about this feature [here](https://hub.armosec.io/docs/exceptions).
 
-### Kubescape for IDEs - Shift Left Security Best Practices
+### Kubescape for IDEs
 
-A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle. This approach is called [Shift Left Security](https://www.armosec.io/blog/kubernetes-security-best-practices/). It means, you shift (or move) the vulnerability scan step before other processes, such as the automation running inside your CI/CD pipeline(s).
+A more efficient approach is where you integrate vulnerability scan tools directly in your favorite IDE (or Integrated Development Environment). This way you can detect and fix security issues ahead of time in the software development cycle.
 
-Kubescape offers support for shift left testing via dedicated support, such as:
+Kubescape offers support for IDE integration via following extensions:
 
 1. [Visual Studio Code extension](https://hub.armosec.io/docs/visual-studio-code).
 2. [Kubernetes Lens extension](https://hub.armosec.io/docs/kubernetes-lens).

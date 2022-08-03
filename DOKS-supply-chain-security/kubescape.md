@@ -58,7 +58,7 @@ In this guide you will use Kubescape to perform risk analysis for your Kubernete
   - [Treating Exceptions](#treating-exceptions)
   - [Kubescape for IDEs](#kubescape-for-ides)
 - [Step 6 - Triggering the Kubescape CI/CD Workflow Automatically](#step-6---triggering-the-kubescape-cicd-workflow-automatically)
-- [Step 7 - Enabling Slack Notifications](#step-7---enabling-slack-notifications)
+- [Step 7 - Enabling Slack Notifications for Continuous Monitoring](#step-7---enabling-slack-notifications-for-continuous-monitoring)
 - [Conclusion](#conclusion)
 - [Additional Resources](#additional-resources)
 
@@ -72,6 +72,7 @@ To complete all steps from this guide, you will need:
 4. [Helm](https://www.helm.sh), to install Kubescape in the Kubernetes cluster.
 5. [Kubescape CLI](https://hub.armosec.io/docs/installing-kubescape/) to interact with [Kubescape](https://github.com/armosec/kubescape/) vulnerabilities scanner.
 6. A free [Armosec Cloud Portal](https://cloud.armosec.io) account used to periodically publish scan results for your Kubernetes cluster to a nice dashboard. Also, the Armosec portal web interface helps you with investigations and risk analysis.
+7. A Slack workspace you own, and a dedicated [Slack app](https://api.slack.com/authentication/basics) to get notified of vulnerability scan issues reported by Kubescape.
 
 ## Step 1 - Getting to Know the Kubescape CLI
 
@@ -540,7 +541,15 @@ on:
 
 After editing the file, commit the changes to your main branch and you should be ready to go.
 
-## Step 7 - Enabling Slack Notifications
+## Step 7 - Enabling Slack Notifications for Continuous Monitoring
+
+The vulnerability scan automation you implemented so far is a good starting point, but not perfect. Why?
+
+One issue with the current approach is that you never know when new issues are reported for the assets you already deployed in your environments. In other words, you assessed the security risks and took the measures to fix the issues at one specific point in time - when your CI/CD automation was executed.
+
+But, what if new issues are reported meanwhile and your application is vulnerable again?
+
+The monitoring feature of Kubescape helps you address new vulnerabilities, which are constantly disclosed. When combined with the Slack integration, you can take immediate actions to fix new disclosed issues that may affect your application in a production environment.
 
 The Armo cloud portal supports Slack integration for sending real time alerts after each cluster scan. This feature requires the Armo cloud components Helm chart to be installed in your DOKS cluster as explained in [Step 3 - Configuring Kubescape Automatic Scans for DOKS](#step-3---configuring-kubescape-automatic-scans-for-doks).
 

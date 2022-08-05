@@ -88,7 +88,7 @@ do-block-storage (default)   dobs.csi.digitalocean.com   Delete          Immedia
 
 DigitalOcean Block Storage Volumes are mounted as read-write by a single node (RWO). Additional nodes cannot mount the same volume. The data content of a PersistentVolume can not be accessed by multiple Pods simultaneously.
 
-Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamically StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX).
+Horizontal pod autoscaling (HPA) is used to scale the WordPress Pods in a dynamic StatefulSet, hence WordPress requires a [volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounted as read-write by many nodes (RWX).
 
 NFS (Network File System) is a commonly used solution to provide RWX volumes on block storage. This server offers a PersistentVolumeClaim (PVC) in RWX mode so that multiple web applications can access the data in a shared fashion.
 
@@ -416,13 +416,13 @@ helm upgrade redis bitnami/redis \
     --create-namespace \
     --install \
     --namespace redis \
-    --version 16.0.0 \
+    --version 17.0.5 \
     --values assets/manifests/redis-values.yaml
 ```
 
 **Note:**
 
-A specific version for the redis `Helm` chart is used. In this case `16.0.0` was picked, which maps to the `6.2.6` release of Redis. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
+A specific version for the redis `Helm` chart is used. In this case `17.0.5` was picked, which maps to the `7.0.4` release of Redis. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
 
 Check Helm release status:
 
@@ -434,7 +434,7 @@ The output looks similar to (notice the `STATUS` column which has the `deployed`
 
 ```text
 NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
-redis   redis           1               2022-06-02 08:45:38.617726 +0300 EEST   deployed        redis-16.0.0    6.2.6
+redis   redis           1               2022-06-02 08:45:38.617726 +0300 EEST   deployed        redis-17.0.5    7.0.4
 ```
 
 Verify if Redis is up and running:
@@ -546,13 +546,13 @@ helm upgrade wordpress bitnami/wordpress \
     --create-namespace \
     --install \
     --namespace wordpress \
-    --version 13.1.4 \
+    --version 15.0.11 \
     --values assets/manifests/wordpress-values.yaml
 ```
 
 **Note:**
 
-A specific version for the wordpress `Helm` chart is used. In this case `13.1.4` was picked, which maps to the `5.9.2` release of WordPress. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
+A specific version for the wordpress `Helm` chart is used. In this case `15.0.11` was picked, which maps to the `6.0.1` release of WordPress. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via Git.
 
 Check Helm release status:
 
@@ -563,8 +563,8 @@ helm ls -n wordpress
 The output looks similar to (notice the `STATUS` column which has the `deployed` value):
 
 ```text
-NAME      NAMESPACE REVISION UPDATED                              STATUS   CHART            APP VERSION
-wordpress wordpress 1        2022-03-22 14:22:18.146474 +0200 EET deployed wordpress-13.1.4 5.9.2
+NAME      NAMESPACE REVISION UPDATED                              STATUS   CHART             APP VERSION
+wordpress wordpress 1        2022-03-22 14:22:18.146474 +0200 EET deployed wordpress-15.0.11 6.0.1
 ```
 
 Verify if WordPress is up and running:
@@ -637,7 +637,7 @@ helm upgrade wordpress bitnami/wordpress \
     --create-namespace \
     --install \
     --namespace wordpress \
-    --version 13.1.4 \
+    --version 15.0.11 \
     --values assets/manifests/wordpress-values.yaml
 ```
 
@@ -698,7 +698,7 @@ helm repo update ingress-nginx
 Next, install the Nginx Ingress Controller using Helm:
 
 ```console
-helm install ingress-nginx ingress-nginx/ingress-nginx --version 4.0.13 \
+helm install ingress-nginx ingress-nginx/ingress-nginx --version 4.1.3 \
   --namespace ingress-nginx \
   --create-namespace
 ```
@@ -712,8 +712,8 @@ helm ls -n ingress-nginx
 The output looks similar to the following (notice the `STATUS` column which has the `deployed` value):
 
 ```text
-NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
-ingress-nginx   ingress-nginx   1               2022-02-14 12:04:06.670028 +0200 EET    deployed        ingress-nginx-4.0.13    1.1.0
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                  APP VERSION
+ingress-nginx   ingress-nginx   1               2022-02-14 12:04:06.670028 +0200 EET    deployed        ingress-nginx-4.1.3    1.2.1
 ```
 
 Finally, list all load balancer resources from your `DigitalOcean` account, and print the `IP`, `ID`, `Name` and `Status`:
@@ -807,7 +807,7 @@ helm repo update jetstack
 Next, install Cert-Manager using Helm:
 
 ```console
-helm install cert-manager jetstack/cert-manager --version 1.6.1 \
+helm install cert-manager jetstack/cert-manager --version 1.8.0 \
   --namespace cert-manager \
   --create-namespace \
   --set installCRDs=true
@@ -823,7 +823,7 @@ The output looks similar to (`STATUS` column should print `deployed`):
 
 ```text
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
-cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300 EEST   deployed        cert-manager-v1.6.1     v1.6.1
+cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300 EEST   deployed        cert-manager-v1.8.0     v1.8.0
 ```
 
 **Notes:**
@@ -833,8 +833,6 @@ cert-manager    cert-manager    1               2021-10-20 12:13:05.124264 +0300
 - An alternative way to install [NGINX Ingress Controller](https://marketplace.digitalocean.com/apps/nginx-ingress-controller) and [Cert-Manager](https://marketplace.digitalocean.com/apps/cert-manager) is via the DigitalOcean 1-click apps platform.
 
 #### Configuring Production Ready TLS Certificates for WordPress
-
-Next, open and inspect the `assets/manifests/openEBS-nfs-provisioner-values.yaml` file provided in the repository:
 
 A cluster issuer is required first, in order to obtain the final TLS certificate. Open and inspect the `assets/manifests/letsencrypt-issuer-values-values.yaml` file provided in the repository:
 
@@ -891,7 +889,7 @@ Upgrade via `helm`:
 helm upgrade wordpress bitnami/wordpress \
     --create-namespace \
     --namespace wordpress \
-    --version 13.1.4 \
+    --version 15.0.11 \
     --timeout 10m0s \
     --values assets/manifests/wordpress-values.yaml
 ```
@@ -909,7 +907,7 @@ NAME                  READY   SECRET                AGE
 wordpress.local-tls   True    wordpress.local-tls   24h
 ```
 
-Now, you can access WordPress using the domain configured earlier.
+Now, you can access WordPress using the domain configured earlier. You will be guided through the `installation` process.
 
 ## Enabling WordPress Monitoring Metrics
 
@@ -929,7 +927,7 @@ Apply changes using Helm:
 helm upgrade wordpress bitnami/wordpress \
     --create-namespace \
     --namespace wordpress \
-    --version 13.1.4 \
+    --version 15.0.11 \
     --timeout 10m0s \
     --values assets/manifests/wordpress-values.yaml
 ```

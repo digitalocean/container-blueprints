@@ -558,11 +558,11 @@ Next, you will provision Tekton Triggers on your Kubernetes cluster.
 
 ### Provisioning Tekton Triggers
 
-[Tekton Triggers](https://github.com/tektoncd/triggers) is not available as a 1-Click application, so you will install it using `kubectl` as recommended in the [official installation page](https://tekton.dev/docs/triggers/install/#installing-tekton-triggers-on-your-cluster). Run the following commands to install Tekton Triggers and dependencies. The latest stable version available at this time of writing is [v0.19.1](https://github.com/tektoncd/triggers/releases/tag/v0.19.1):
+[Tekton Triggers](https://github.com/tektoncd/triggers) is not available as a 1-Click application, so you will install it using `kubectl` as recommended in the [official installation page](https://tekton.dev/docs/triggers/install/#installing-tekton-triggers-on-your-cluster). Run the following commands to install Tekton Triggers and dependencies. The latest stable version available at this time of writing is [v0.20.1](https://github.com/tektoncd/triggers/releases/tag/v0.20.1):
 
 ```shell
-kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.19.1/release.yaml
-kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.19.1/interceptors.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.20.1/release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.20.1/interceptors.yaml
 ```
 
 **Note:** Tekton Triggers requires Tekton Pipelines to be installed first as a dependency, as described in the [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines) section. By default, it uses the `tekton-pipelines` to create the required resources.
@@ -591,7 +591,7 @@ tkn version
 The output looks similar to:
 
 ```text
-Client version: 0.23.1
+Client version: 0.24.0
 Pipeline version: v0.29.0
 Triggers version: v0.19.1
 ```
@@ -600,10 +600,10 @@ Next, you will provision the Tekton Dashboard on your Kubernetes cluster using `
 
 ### Provisioning Tekton Dashboard
 
-[Tekton Dashboard](https://github.com/tektoncd/dashboard) is not available as a 1-Click application yet, so you will install it using `kubectl` as recommended in the [official installation page](https://github.com/tektoncd/dashboard/blob/main/docs/install.md). Run the following commands to install Tekton Dahsboard and dependencies. The latest stable version available at this time of writing is [v0.25.0](https://github.com/tektoncd/dashboard/releases/tag/v0.25.0):
+[Tekton Dashboard](https://github.com/tektoncd/dashboard) is not available as a 1-Click application yet, so you will install it using `kubectl` as recommended in the [official installation page](https://github.com/tektoncd/dashboard/blob/main/docs/install.md). Run the following commands to install Tekton Dahsboard and dependencies. The latest stable version available at this time of writing is [v0.28.0](https://github.com/tektoncd/dashboard/releases/tag/v0.28.0):
 
 ```shell
-kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/previous/v0.25.0/tekton-dashboard-release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/previous/v0.28.0/tekton-dashboard-release.yaml
 ```
 
 **Note:** Tekton Dashboard requires Tekton Pipelines to be installed first as a dependency as described in the [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines) section. By default, it uses the `tekton-pipelines` to create required resources.
@@ -630,10 +630,10 @@ tkn version
 The output looks similar to:
 
 ```text
-Client version: 0.23.1
+Client version: 0.24.0
 Pipeline version: v0.29.0
-Triggers version: v0.19.1
-Dashboard version: v0.25.0
+Triggers version: v0.20.1
+Dashboard version: v0.28.0
 ```
 
 The Tekton Dashboard can be accessed by port-forwarding the associated Kubernetes service. First, check the associated service:

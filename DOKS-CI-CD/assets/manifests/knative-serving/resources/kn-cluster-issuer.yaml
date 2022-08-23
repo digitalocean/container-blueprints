@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: kn-letsencrypt-http01-issuer
+spec:
+  acme:
+    privateKeySecretRef:
+      name: kn-letsencrypt
+    # GitHub webhooks require a production ready TLS certificate
+    # Make sure to switch to the Let's Encrypt production server, when setting Knative Eventing to react on GitHub events
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # By default it's recommended to use the Let's Encrypt staging environment for testing
+    # The Let's Encrypt production server has a quota limit set for the number of requests per day
+    # server: https://acme-staging-v02.api.letsencrypt.org/directory
+    solvers:
+      - http01:
+          ingress:
+            class: kourier

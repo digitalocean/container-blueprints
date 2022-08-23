@@ -1,0 +1,18 @@
+# An `EventListener` is basically a service that listens for events at a specified port on your Kubernetes cluster.
+# It exposes an addressable sink that receives incoming events, and specifies one or more `Triggers`.
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: tekton-argocd-build-deploy-event-listener
+spec:
+  # Service account name to use - allows this EventListener to instantiate Pipeline resources
+  serviceAccountName: doks-ci-cd-tekton-triggers-sa
+  # List of triggers used by this EventListener
+  # Each trigger is composed of a TriggerBinding and a TriggerTemplate
+  triggers:
+    - name: tekton-argocd-build-deploy-trigger
+      bindings:
+        - ref: tekton-argocd-build-deploy-trigger-binding # Reference to a TriggerBinding object
+      template:
+        ref: tekton-argocd-build-deploy-trigger-template # Reference to a TriggerTemplate object

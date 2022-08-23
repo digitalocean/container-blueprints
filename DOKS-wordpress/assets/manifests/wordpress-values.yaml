@@ -1,0 +1,48 @@
+# WordPress service type
+service:
+  type: ClusterIP
+
+# Enable persistence using Persistent Volume Claims
+persistence:
+  enabled: true
+  storageClass: rwx-storage
+  accessModes: ["ReadWriteMany"]
+  size: 5Gi
+
+volumePermissions:
+  enabled: true
+
+# Prometheus Exporter / Metrics configuration
+metrics:
+  enabled: false
+
+# Level of auto-updates to allow. Allowed values: major, minor or none.
+wordpressAutoUpdateLevel: minor
+
+# Scheme to use to generate WordPress URLs
+wordpressScheme: https
+
+# WordPress credentials
+wordpressUsername: <YOUR_WORDPRESS_USER_NAME_HERE>
+wordpressPassword: <YOUR_WORDPRESS_USER_PASSSWORD_HERE>
+
+# External Database details
+externalDatabase:
+  host: <YOUR_WORDPRESS_MYSQL_DB_HOST_HERE>
+  port: 25060
+  user: <YOUR_WORDPRESS_MYSQL_DB_USER_NAME_HERE>
+  password: <YOUR_WORDPRESS_MYSQL_DB_USER_PASSWORD_HERE>
+  database: <YOUR_WORDPRESS_MYSQL_DB_NAME_HERE>
+
+# Disabling MariaDB
+mariadb:
+  enabled: false
+
+wordpressSkipInstall: true
+
+wordpressExtraConfigContent: |
+    define( 'WP_REDIS_SCHEME', '<REDIS_SCHEME>' );
+    define( 'WP_REDIS_HOST', '<REDIS_HOST>' );
+    define( 'WP_REDIS_PORT', <REDIS_PORT> );
+    define( 'WP_REDIS_PASSWORD', '<REDIS_PASSWORD>');
+    define( 'WP_REDIS_DATABASE', 0 );

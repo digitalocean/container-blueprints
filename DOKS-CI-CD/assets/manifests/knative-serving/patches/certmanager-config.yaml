@@ -1,0 +1,12 @@
+apiVersion: operator.knative.dev/v1alpha1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+spec:
+  config:
+    # Instruct Knative Serving to use `kn-letsencrypt-http01-issuer` as a cluster issuer for TLS certificates
+    certmanager:
+      issuerRef: |
+        kind: ClusterIssuer
+        name: kn-letsencrypt-http01-issuer

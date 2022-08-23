@@ -1,0 +1,7 @@
+{
+    "auths": {
+        "registry.digitalocean.com": {
+            "auth": "<YOUR_DOCKER_REGISTRY_AUTH_TOKEN_VALUE_HERE>"
+        }
+    }
+}

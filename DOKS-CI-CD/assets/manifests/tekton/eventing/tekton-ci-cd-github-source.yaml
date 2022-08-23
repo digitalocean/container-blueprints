@@ -1,0 +1,30 @@
+# `GitHubSource` CRD - defines GitHub as a source of events for other consumers (such as Tekton EventListeners)
+
+apiVersion: sources.knative.dev/v1alpha1
+kind: GitHubSource
+metadata:
+  name: tekton-ci-cd-github-source
+spec:
+  # Defines what type of GitHub events you're interested
+  eventTypes:
+    - push
+  ownerAndRepository: <YOUR_GITHUB_USER_NAME_HERE>/<YOUR_GITHUB_REPO_HERE>
+  accessToken:
+    secretKeyRef:
+      name: tekton-ci-github-pat
+      key: accessToken
+  secretToken:
+    secretKeyRef:
+      name: tekton-ci-github-pat
+      key: secretToken
+  # Defines a sink where GitHub events should be sent
+  # You can send events to a Knative or Kubernetes Service
+  # You can also send events to multiple subscribers via Knative Eventing Channels (or Brokers)
+  sink:
+    # Change the URI value to match your service name, namespace and port value (below value works for this tutorial only)
+    # URI field value uses the following format: http://<service_name>.<namespace>:<port>
+    uri: http://el-tekton-argocd-build-deploy-event-listener.doks-ci-cd.svc.cluster.local:8080
+    # ref:
+    #   apiVersion: messaging.knative.dev/v1
+    #   kind: InMemoryChannel
+    #   name: tekton-ci-channel

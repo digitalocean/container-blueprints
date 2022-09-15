@@ -1,0 +1,8 @@
+apiVersion: networking.digitalocean.com/v1
+kind: StaticRoute
+metadata:
+  name: static-route-ipinfo.io
+spec:
+  destinations:
+    - "34.117.59.81"
+  gateway: "<YOUR_NAT_GW_DROPLET_PRIVATE_IP_HERE>"

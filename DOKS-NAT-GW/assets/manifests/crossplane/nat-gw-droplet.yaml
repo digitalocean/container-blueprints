@@ -1,0 +1,30 @@
+---
+apiVersion: compute.do.crossplane.io/v1alpha1
+kind: Droplet
+metadata:
+  name: nat-gw-nyc1
+spec:
+  forProvider:
+    region: nyc1
+    size: s-1vcpu-1gb
+    image: ubuntu-20-04-x64
+    userData: |
+      #!/usr/bin/env bash
+      # Install dependencies
+      echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
+      echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
+      apt-get update
+      apt-get -y install iptables iptables-persistent curl
+
+      # Enable IP forwarding
+      echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+      sysctl -p /etc/sysctl.conf
+
+      # Configure iptables for NAT
+      PRIVATE_NETWORK_INTERFACE_IP="$(curl -s http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address)"
+      PRIVATE_NETWORK_CIDR="$(ip route show src $PRIVATE_NETWORK_INTERFACE_IP | awk '{print $1}')"
+      PUBLIC_INTERFACE_NAME="$(ip route show default | awk '{print $5}')"
+      iptables -t nat -A POSTROUTING -s "$PRIVATE_NETWORK_CIDR" -o "$PUBLIC_INTERFACE_NAME" -j MASQUERADE
+      iptables-save > /etc/iptables/rules.v4
+  providerConfigRef:
+    name: do-provider-config

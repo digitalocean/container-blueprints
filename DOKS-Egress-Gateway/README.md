@@ -1,34 +1,40 @@
-# Set up a DOKS NAT Gateway using Crossplane and Static Route Operator
+# Setting up a DOKS Egress Gateway using Crossplane and Static Routes Operator
 
 ## Overview
 
 This blueprint will teach you to:
 
-- Deploy and configure a NAT Gateway for your DOKS cluster, via [Crossplane](https://crossplane.io/).
-- Deploy the [Static Routes Operator](https://github.com/digitalocean/k8s-staticroute-operator/), and configure static routes on DOKS worker nodes to egress workloads traffic to specific destinations.
+- Deploy and configure a DigitalOcean Droplet to act as an Egress gateway for your DOKS cluster, via [Crossplane](https://crossplane.io/).
+- Deploy the [Static Routes Operator](https://github.com/digitalocean/k8s-staticroute-operator/), and configure static routes on your DOKS cluster worker nodes to egress workloads traffic to all public IP ranges (some restrictions apply), or to specific destinations only.
 
-What is a NAT gateway and why is it important?
+What is an Egress gateway and why is it important?
 
-No matter where you have your resources (DOKS, Droplets, etc) deployed and running, they live in a private network, or VPC. The private network can be at home behind your ISP router, a private data center (on-premise), or in a cloud based environment. One of the private network (or VPC) main roles, is to isolate and protect your resources from the outside world. Access is restricted or allowed via firewalls rules.
-
-In reality, a private network which is fully isolated from the outside world (meaning no inbound or outbound traffic is allowed) is not quite useful per se. For security reasons, you usually restrict all incoming traffic by default (deny all ports), except your application needs. If it's a web application, then port 80 is usually allowed to receive incoming traffic.
+No matter where you have your resources (DOKS, Droplets, etc) deployed and running, they live in a private network, or VPC. The private network can be at home behind your ISP router, a private data center (on-premise), or in a cloud based environment. Main role of a VPC is to isolate different networks across different regions. Different VPCs can talk to each other via gateways (which is a router in essence).
 
 Next, you need to get familiar with some terminology associated with inbound and outbound traffic, explained below:
 
 - `Ingress` deals with `inbound` traffic, entering your VPC.
 - `Egress` deals with `outbound` traffic, exiting your VPC.
 
-When using Kubernetes, you manage incoming traffic via an [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resource. But, for outgoing traffic there is no Egress resource in the Kubernetes spec. It can be implemented in the [CNI](https://github.com/containernetworking/cni) layer. For example Cilium, which is used by DOKS, has an [Egress Gateway](https://docs.cilium.io/en/v1.12/gettingstarted/egress-gateway/) spec. But, in case of DigitalOcean Kubernetes is not quite stable or production ready yet.
+When using Kubernetes, you manage incoming traffic via an [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) resource. But, for outgoing traffic there is no Egress resource in the Kubernetes spec. It can be implemented in the [CNI](https://github.com/containernetworking/cni) layer. For example Cilium, which is used by DOKS, has an [Egress Gateway](https://docs.cilium.io/en/v1.12/gettingstarted/egress-gateway/) spec. But, in case of DigitalOcean Kubernetes it's not quite stable or production ready yet.
 
-For controlling egress traffic you can use a NAT gateway. In essence, a NAT gateway sits at the edge of your private network (or VPC), through which outbound (or egress) traffic flows to the public internet. The main role of the NAT process, which stands for Network Address Translation, is to make network packets routable outside your private network.
+There are three key aspects related to egress functionality:
 
-Your private network uses a specific IP range (e.g. 10.116.0.0/20), which must be translated to a public IP address to be accepted by the public network (or internet). When a response packet comes in, the NAT layer must translate the public IP address to the private network address of the host from where the traffic originated. This is what NAT is for. A dedicated machine configured for this purpose is called a NAT gateway (or Egress Gateway).
+1. Restricting egress traffic (not covered in this guide).
+2. NAT outgoing.
+3. Egress gateways.
 
-Moving further with a practical example, suppose that you need to use an external service such as a database. The database is usually located in another data center outside your network (or VPC). The database administrator configured the database firewall so that only specific public IPs are allowed to connect. This is another use case for a NAT gateway.
+Restricting egress (or outgoing) traffic is not covered in this blueprint, but in essence is a way of restricting outbound traffic for cluster Pods. Itt can be achieved via network policies, or firewalls. Firewall is the most common use case, where you allow connections only to a particular external IP address range, or to external services. Firewalls cannot distinguish between individual Pods, so the rules apply equally to all.
 
-You can egress from your DOKS cluster nodes, but it's not practical because nodes are volatile, hence the public IP will change. It means that on the other end (i.e. database service), you need to change network ACLs again to allow the new public IP - not good. This is another use case for a NAT gateway.
+To build an egress gateway you need NAT functionality, implemented using a NAT gateway In essence, a NAT gateway sits at the edge of your private network (or VPC), through which outbound (or egress) traffic flows to the public internet. The main role of NAT, which stands for Network Address Translation, is to make network packets routable outside your private network (or VPC). The process needs to work in reverse order as well, meaning incoming response packets, need to be routed back to the originating private IP inside your VPC.
 
-Although DigitalOcean doesn't provide a managed NAT Gateway resource, you can configure and use a dedicated Droplet for this purpose. Then, on the other end (i.e. database service), you configure firewall rules to allow traffic coming from the NAT gateway droplet public IP (you can also reserve a public IP for consistency).
+Your VPC uses a specific IP range (e.g. `10.116.0.0/20`), which needs to be translated to a public IP address so that packets can flow to a specific destination outside your private network (i.e. Internet). When a response packet comes in, the NAT layer must translate the public IP address from the packet header to the private network address of the host where traffic originated. This is what NAT is for.
+
+A dedicated machine configured for this purpose is called a NAT gateway. When attached to a DOKS cluster, it can route all (or specific destinations only) traffic via a single routable public IP. Hence, we can call it an **Egress Gateway** in this context.
+
+Moving further with a practical example, suppose that you need to use an external service such as a database. The database is usually located in another data center outside your private network (or VPC). The database administrator configured the database firewall so that only specific public IPs are allowed to connect. You already egress from your DOKS cluster nodes because they are connected directly to the Internet, but it's not practical because nodes are volatile, hence the public IPs will change.
+
+As a consequence, on the other end (i.e. database service), you need to change network ACLs again to allow the new public IPs - not good. An egress gateway makes it so that all traffic coming from your application Pods inside the Kubernetes cluster, is seen as coming from a single public IP. That is, the public IP of the egress gateway. You can go even further and use a reserved IP for the egress gateway, so that it will never change.
 
 Below is a diagram, showing the main setup for egressing DOKS cluster traffic to an external service (i.e. database):
 
@@ -42,12 +48,13 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
 - [Step 2 - Installing Crossplane](#step-2---installing-crossplane)
 - [Step 3 - Introducing Static Routes Operator](#step-3---introducing-static-routes-operator)
 - [Step 4 - Installing Static Routes Operator](#step-4---installing-static-routes-operator)
-- [Step 5 - Creating a NAT Gateway using Crossplane](#step-5---creating-a-nat-gateway-using-crossplane)
+- [Step 5 - Creating an Egress Gateway using Crossplane](#step-5---creating-an-egress-gateway-using-crossplane)
   - [Installing the DigitalOcean Provider Package](#installing-the-digitalocean-provider-package)
   - [Configuring the DigitalOcean Provider](#configuring-the-digitalocean-provider)
-  - [Provisioning the NAT Gateway Droplet Resource](#provisioning-the-nat-gateway-droplet-resource)
-- [Step 6 - Configuring Static Routes for your NAT Gateway](#step-6---configuring-static-routes-for-your-nat-gateway)
+  - [Provisioning the Egress Gateway Droplet Resource](#provisioning-the-egress-gateway-droplet-resource)
+- [Step 6 - Configuring Static Routes for your Egress Gateway](#step-6---configuring-static-routes-for-your-egress-gateway)
 - [Step 7 - Testing the DOKS Cluster Egress Setup](#step-7---testing-the-doks-cluster-egress-setup)
+- [Step 8 - Configuring the Static Routes Controller to Egress All Cluster Traffic](#step-8---configuring-the-static-routes-controller-to-egress-all-cluster-traffic)
 - [Cleaning Up](#cleaning-up)
 - [Summary](#summary)
 
@@ -65,14 +72,14 @@ To complete this tutorial, you will need:
 
 The main idea behind [Crossplane](https://crossplane.io/) is infrastructure management the Kubernetes way. It means, you can define and create CRDs using a declarative approach, and let Crossplane deal with the inner details. With Crossplane it's possible to create [Droplets](https://www.digitalocean.com/products/droplets), [Managed Databases](https://www.digitalocean.com/products/managed-databases), [Load Balancers](https://www.digitalocean.com/products/load-balancer), even [Kubernetes clusters (DOKS)](https://docs.digitalocean.com/products/kubernetes/), via the [DigitalOcean provider](https://github.com/crossplane-contrib/provider-digitalocean). Crossplane was designed with flexibility in mind, and it can be extended via [providers](https://crossplane.github.io/docs/v1.9/concepts/providers.html).
 
-Next, it's important to understand the basic concepts when using Crossplace to create DigitalOcean resources (e.g. Droplets). There are four main concepts to know about:
+Next, it's important to understand some important concepts behind Crossplace to create DigitalOcean resources (e.g. Droplets). There are four main concepts to know about:
 
 1. [Packages](https://crossplane.io/docs/v1.9/concepts/packages.html) allow Crossplane to be extended to include new functionality. You can think of packages the same way as Linux distributions pack and distribute applications. So, Crossplane packages distribute a set of CRDs and associated controllers to provision infrastructure resources.
 2. [Providers](https://crossplane.github.io/docs/v1.9/concepts/providers.html) represent packages that enable Crossplane to provision infrastructure (e.g. [DigitalOcean Provider](https://github.com/crossplane-contrib/provider-digitalocean)).
 3. [Managed Resources](https://crossplane.io/docs/v1.9/concepts/managed-resources.html) are Kubernetes custom resources (CRDs) that represent infrastructure primitives. For example, to provision a Droplet, you would use a [Droplet CRD](https://github.com/crossplane-contrib/provider-digitalocean/blob/main/examples/compute/droplet-user-data.yaml).
 4. [Composite Resources](https://crossplane.io/docs/v1.9/concepts/composition.html) represents a special kind of custom resource. Main purpose is to compose together more managed resources into a higher level infrastructure unit which can be reused. For example, you can create a composite resource which consists of a managed database (e.g. [DigitalOcean PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/)) and a firewall resource, acting as a single deployable unit.
 
-Below picture shows the simplified operational concept for Crossplane:
+Below picture shows a simplified operational overview for Crossplane:
 
 ![Crossplane Overview](assets/images/crossplane_overview.png)
 
@@ -82,7 +89,7 @@ A typical Droplet CRD consumed by Crossplane looks like below:
 apiVersion: compute.do.crossplane.io/v1alpha1
 kind: Droplet
 metadata:
-  name: nat-gw-nyc1
+  name: egress-gw-nyc1
 spec:
   forProvider:
     region: nyc1
@@ -95,7 +102,11 @@ spec:
 Explanations for the above configuration:
 
 - `spec.forProvider` - defines all metadata required by the DigitalOcean provider to provision a new Droplet, such as: `region`, `size`, `image`, etc. Fields value map directly to the DigitalOcean Droplet specification.
-- `spec.providerConfigRef` - specifies a reference to a provider configuration CRD (explained in [Step 3 - Creating a NAT Gateway using Crossplane](#step-3---creating-a-nat-gateway-using-crossplane)). The provider configuration instructs the Droplet CRD how to connect to the [DigitalOcean REST API](https://docs.digitalocean.com/reference/api/api-reference/), and what credentials to use (e.g. DO API token).
+- `spec.providerConfigRef` - specifies a reference to a provider configuration CRD (explained in [Step 3 - Creating an Egress Gateway using Crossplane](#step-3---creating-an-egress-gateway-using-crossplane)). The provider configuration instructs the Droplet CRD how to connect to the [DigitalOcean REST API](https://docs.digitalocean.com/reference/api/api-reference/), and what credentials to use (e.g. DO API token).
+
+**Hint:**
+
+You can also check this nice [CRD viewer](https://doc.crds.dev/github.com/crossplane-contrib/provider-digitalocean/compute.do.crossplane.io/Droplet/v1alpha1@v0.1.0) to see all the fields available for the Droplet kind, in a human readable format (available only for latest released version, which is [0.1.0](https://github.com/crossplane-contrib/provider-digitalocean/releases/tag/v0.1.0) at this time of writing).
 
 Under the hood, Crossplane is delegating the real work to the DigitalOcean provider, which in turn will use the provider [REST API](https://docs.digitalocean.com/reference/api/api-reference/) to create a new droplet based on the requirements from the Droplet CRD spec field.
 
@@ -107,7 +118,7 @@ In the next step, you will learn how to install and configure Crossplane for you
 
 ## Step 2 - Installing Crossplane
 
-Crossplane is available as a Helm chart for easy installation, as well as future upgrades. Follow below steps to install Crossplane, via Helm:
+Crossplane is available as a Helm chart for easy installation, as well as for future upgrades. Follow below steps to install Crossplane, via Helm (version 3.x is required):
 
 1. Add and update the Crossplane Helm repository:
 
@@ -204,7 +215,7 @@ Because the operator has access to the Linux routing table, special care must be
 
 **VERY IMPORTANT TO REMEMBER:**
 
-**You need to make sure to NOT ADD static routes containing CIDRs which overlap with DigitalOcean REST API endpoints (including DOKS) ! Doing so, will affect DOKS cluster functionality (Kubelets), and/or other internal services.**
+**You need to make sure to NOT ADD static routes containing CIDRs which overlap with DigitalOcean REST API endpoints (including DOKS) ! Doing so, will affect DOKS cluster functionality (Kubelets), and/or other internal services (e.g. Crossplane).**
 
 In the next step, you will learn how to install and configure the static routes operator.
 
@@ -215,9 +226,7 @@ Static routes operator is available as a single manifest file, and it is install
 1. Deploy the latest version release using kubectl. Below example is using the `1.0.0` version:
 
     ```shell
-    STATIC_ROUTES_OPERATOR_VERSION="1.0.0"
-
-    kubectl apply -f deploy "https://raw.githubusercontent.com/digitalocean/k8s-staticroute-operator/main/releases/v1/k8s-staticroute-operator-v${STATIC_ROUTES_OPERATOR_VERSION}.yaml"
+    kubectl apply -f https://raw.githubusercontent.com/digitalocean/k8s-staticroute-operator/main/releases/v1/k8s-staticroute-operator-v1.0.0.yaml
     ```
 
     **Hint:**
@@ -260,11 +269,11 @@ Static routes operator is available as a single manifest file, and it is install
     [2022-08-24 14:42:13,791] kopf._cogs.clients.w [DEBUG   ] Starting the watch-stream for staticroutes.v1.networking.digitalocean.com cluster-wide.
     ...
 
-If the output looks like above, you installed the static routes operator successfully. In the next step, you will learn how to provision your first NAT gateway Droplet using Crossplane.
+If the output looks like above, you installed the static routes operator successfully. In the next step, you will learn how to provision your first egress gateway Droplet using Crossplane.
 
-## Step 5 - Creating a NAT Gateway using Crossplane
+## Step 5 - Creating an Egress Gateway using Crossplane
 
-To provision a NAT gateway Droplet on the DigitalOcean platform using Kubernetes and Crossplane, you need to follow a few steps:
+To provision an Egress gateway Droplet on the DigitalOcean platform using Kubernetes and Crossplane, you need to follow a few steps:
 
 1. Install the DigitalOcean provider package.
 2. Configure the DigitalOcean provider so that it can talk with the provider REST API, and manage resources on your behalf.
@@ -300,7 +309,7 @@ To install the DigitalOcean provider used in this guide, please follow below ste
 1. Fetch the provider manifest from the `container-blueprints` repository, using `curl`:
 
     ```shell
-    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/do-provider-install.yaml
+    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/do-provider-install.yaml
     ```
 
 2. Open and inspect the manifest file, using a text editor of your choice (the default values are usually fine, unless you require a specific provider package version). For example, you can use [Visual Studio Code](https://code.visualstudio.com/), with YAML linting support:
@@ -318,7 +327,7 @@ To install the DigitalOcean provider used in this guide, please follow below ste
     Or, directly from the `container-blueprints` repo (if you're OK with the default values):
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/do-provider-install.yaml
+    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/do-provider-install.yaml
     ```
 
 Finally, check if the provider was installed successfully in your DOKS cluster:
@@ -372,7 +381,7 @@ To install the DigitalOcean provider configuration used in this guide, please fo
 1. Fetch the provider configuration manifest from the `container-blueprints` repository, using `curl`:
 
     ```shell
-    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/do-provider-config.yaml
+    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/do-provider-config.yaml
     ```
 
 2. Open and inspect the manifest file, using a text editor of your choice. For example, you can use [Visual Studio Code](https://code.visualstudio.com/), with YAML linting support:
@@ -410,15 +419,15 @@ If the output looks like above, then you configured the DigitalOcean provider su
 
 Please note that all of the steps taken so far need to be performed only once. Once a provider is installed and configured, you can reference it in any resource you want to create, such as Droplets, managed databases, etc. The only intervention required over time, is when you need to upgrade a provider package to get new functionality, or if you need to update your DO API token.
 
-Next, you will take the final step and provision the NAT gateway droplet for your egress setup.
+Next, you will take the final step and provision the egress gateway droplet for your egress setup.
 
-### Provisioning the NAT Gateway Droplet Resource
+### Provisioning the Egress Gateway Droplet Resource
 
 **IMPORTANT:**
 
-**The NAT gateway Droplet and DOKS cluster must be in the same VPC (or on the same network) for the whole setup to work !!!**
+**The egress gateway Droplet and DOKS cluster must be in the same VPC (or on the same network) for the whole setup to work !!!**
 
-Now that the DigitalOcean provider is installed and properly configured, you can proceed and create the actual Droplet resource to act as a NAT gateway for the demo used this blueprint.
+Now that the DigitalOcean provider is installed and properly configured, you can proceed and create the actual Droplet resource to act as an egress gateway for the demo used this blueprint.
 
 The Crossplane Droplet CRD used in this blueprint looks like below:
 
@@ -426,7 +435,7 @@ The Crossplane Droplet CRD used in this blueprint looks like below:
 apiVersion: compute.do.crossplane.io/v1alpha1
 kind: Droplet
 metadata:
-  name: nat-gw-nyc1
+  name: egress-gw-nyc1
 spec:
   forProvider:
     region: nyc1
@@ -461,33 +470,33 @@ In the above example, the cloud init script main role is to initialize the Dropl
 1. The first line denotes the fact that the cloud init script needs to be interpreted as a Bash script -  `#!/usr/bin/env bash`.
 2. Next, the required packages are installed, such as: `iptables`, `iptables-persistent` (persists iptables rules on reboot), etc. Please bear in mind that the installation commands are Linux distribution specific (above example is Ubuntu specific, which in turn is based on Debian).
 3. Then, IP forwarding is enabled for the Linux Kernel via the `net.ipv4.ip_forward` sysctl setting. Configuration is persisted in the `/etc/sysctl.conf` file to survive machine reboots.
-4. Next, iptables is configured with NAT rules, which makes the Droplet act as a NAT gateway in essence (combined with the IP forwarding setting).
+4. Next, iptables is configured with required NAT rules, to provide egress functionality in combination with IP forwarding.
 5. Finally, NAT rules are saved using the `iptables-save` command, to persist on reboots.
 
-To create the NAT gateway Droplet via Kubernetes, please follow below steps:
+To create the egress gateway Droplet via Kubernetes, please follow below steps:
 
 1. Fetch the Droplet CRD manifest from the `container-blueprints` repository, using `curl`:
 
     ```shell
-    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/nat-gw-droplet.yaml
+    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/egress-gw-droplet.yaml
     ```
 
 2. Open and inspect the manifest file, using a text editor of your choice (the default values are usually fine, unless you require something specific). For example, you can use [Visual Studio Code](https://code.visualstudio.com/), with YAML linting support:
 
     ```shell
-    code nat-gw-droplet.yaml
+    code egress-gw-droplet.yaml
     ```
 
 3. Apply the manifest using `kubectl`:
 
     ```shell
-    kubectl apply -f nat-gw-droplet.yaml
+    kubectl apply -f egress-gw-droplet.yaml
     ```
 
     Or, directly from the `container-blueprints` repo (if you're OK with the default values):
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/nat-gw-droplet.yaml
+    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/egress-gw-droplet.yaml
     ```
 
 Finally, check if the Droplet Kubernetes resource was created successfully:
@@ -500,7 +509,7 @@ The output looks similar to:
 
 ```text
 NAME          PRIVATE IPV4   PUBLIC IPV4      READY   REGION   SIZE          SYNCED
-nat-gw-nyc1   10.116.0.4     192.81.213.125   True    nyc1     s-1vcpu-1gb   True
+egress-gw-nyc1   10.116.0.4     192.81.213.125   True    nyc1     s-1vcpu-1gb   True
 ```
 
 **Important notes:**
@@ -510,12 +519,39 @@ nat-gw-nyc1   10.116.0.4     192.81.213.125   True    nyc1     s-1vcpu-1gb   Tru
 - You can always check how the Droplet resource is progressing, or if something goes wrong by inspecting the `Events` output from below command:
 
     ```shell
-    kubectl describe droplet nat-gw-nyc1
+    kubectl describe droplet egress-gw-nyc1
     ```
 
 The `READY` and `SYNCED` columns should print `True`. If the output looks like above, you configured the Droplet CRD successfully. Also, if you navigate to the Droplets web panel from your DigitalOcean account, you should see the new resource created. You should receive an email as well, with additional details about your newly created Droplet.
 
-## Step 6 - Configuring Static Routes for your NAT Gateway
+Finally, you can check if the cloud init script ran successfully, and did the required changes to enable IP forwarding and NAT functionality. Please follow below steps (all commands must be run as root, or via sudo):
+
+1. Check if IP forwarding is set:
+
+    ```shell
+    cat /proc/sys/net/ipv4/ip_forward
+
+    # Should output: 1, meaning it's enabled
+    ```
+
+2. Check if NAT is set via iptables:
+
+    ```shell
+    iptables -L -t nat
+    ```
+
+    The output looks similar to (the `POSTROUTING` chain should print the `MASQUERADE` target for your **VPC subnet**):
+
+    ```text
+    ...
+    Chain POSTROUTING (policy ACCEPT)
+    target     prot opt source               destination         
+    MASQUERADE  all  --  10.116.0.0/20        anywhere
+    ```
+
+If all checks pass, you configured the egress gateway Droplet successfully. Next, you will learn how to define and create static routes for single as well as multiple destinations, using the egress gateway created earlier via Crossplane.
+
+## Step 6 - Configuring Static Routes for your Egress Gateway
 
 The [sample CRDs](assets/manifests/static-routes/) provided in this blueprint create a static route to two different websites which report back your public IP - [ifconfig.me/ip](http://ifconfig.me/ip), and [ipinfo.io/ip](http://ipinfo.io/ip).
 
@@ -523,16 +559,16 @@ To test the setup, download each sample manifest:
 
 ```shell
 # Example for ifconfig.me
-curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/static-routes/ifconfig-me-example.yaml
+curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/static-routes/ifconfig-me-example.yaml
 
 # Example for ipinfo.io
-curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/doks-nat-gw/assets/manifests/static-routes/ipinfo-io-example.yaml
+curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/static-routes/ipinfo-io-example.yaml
 ```
 
-After downloading the manifests, make sure to replace the `<>` placeholders in each manifest file. To find out the private IPv4 address of your NAT gateway droplet, please run below command (assuming the Droplet name is `nat-gw-nyc1`):
+After downloading the manifests, make sure to replace the `<>` placeholders in each manifest file. To find out the private IPv4 address of your egress gateway droplet, please run below command (assuming the Droplet name is `egress-gw-nyc1`):
 
 ```shell
-kubectl get droplet nat-gw-nyc1 -o jsonpath="{.status.atProvider.privateIPv4}"
+kubectl get droplet egress-gw-nyc1 -o jsonpath="{.status.atProvider.privateIPv4}"
 ```
 
 Next, save changes, and apply each manifest using `kubectl`:
@@ -555,7 +591,7 @@ Next, check if the static route resources were created:
 kubectl get staticroutes -o wide
 ```
 
-The output looks similar to (NAT gateway has private IP `10.116.0.5` in below example):
+The output looks similar to (egress gateway has private IP `10.116.0.5` in below example):
 
 ```text
 NAME                       DESTINATIONS         GATEWAY      AGE
@@ -595,9 +631,47 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 ...
 ```
 
-**Note:**
+**Hints:**
 
-In the above example the NAT GW private IPv4 used for testing is `10.116.0.5`.
+1. You can check each static route status by describing the resource. Taking `static-route-ifconfig.me` as an example:
+
+    ```shell
+    kubectl describe staticroute static-route-ifconfig.me
+    ```
+
+    The output looks similar to (only last relevant lines are shown for simplicity):
+
+    ```text
+    ...
+    Spec:
+      Destinations:
+        34.160.111.145
+      Gateway:  10.116.0.4
+    Status:
+      create_fn:
+        Destination:  34.160.111.145
+        Gateway:      10.116.0.4
+        Status:       Ready
+    Events:           <none>
+    ```
+
+    Looking at the above output, you can see each route details including status (`Ready` or `NotReady`), in the `Status` field.
+
+2. To see all events emitted by the static routes controller, you can use below command:
+
+    ```shell
+    kubectl get events -n static-routes
+    ```
+
+3. For further troubleshooting, you can check the static routes controller logs:
+
+    ```shell
+    # Fetch all logs from the static routes controller and redirect to a file
+    kubectl logs -n static-routes ds/k8s-staticroute-operator > k8s-staticroute-operator.log
+
+    # Use vistual studio code, or your favourite text editor to inspect the logs
+    code k8s-staticroute-operator.log
+    ```
 
 ## Step 7 - Testing the DOKS Cluster Egress Setup
 
@@ -606,7 +680,7 @@ To test your egress setup, you need to check if all the `requests` originating f
 First, you need to create the `curl-test` pod in your `DOKS` cluster (the `default` namespace is used):
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/netmaker-egress-gateway/assets/manifests/curl-test.yaml
+kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/curl-test.yaml
 ```
 
 Verify that the pod is up and running (in the `default` namespace):
@@ -634,18 +708,61 @@ The output looks similar to:
 192.81.213.125
 ```
 
-The resulting IP address that gets printed should be the `public IP` address that was assigned to your NAT gateway droplet. You can check your NAt gateway Droplet public IPv4 address via `kubectl`:
+The resulting IP address that gets printed should be the `public IP` address that was assigned to your egress gateway droplet. You can check your NAt gateway Droplet public IPv4 address via `kubectl`:
 
 ```shell
-kubectl get droplet nat-gw-nyc1 -o jsonpath="{.status.atProvider.publicIPv4}"
+kubectl get droplet egress-gw-nyc1 -o jsonpath="{.status.atProvider.publicIPv4}"
 ```
+
+## Step 8 - Configuring the Static Routes Controller to Egress All Cluster Traffic
+
+**VERY IMPORTANT TO REMEMBER:**
+
+**You need to make sure to NOT ADD static routes containing CIDRs which overlap with DigitalOcean REST API endpoints (including DOKS) ! Doing so, will affect DOKS cluster functionality (Kubelets), and/or other internal services (e.g. Crossplane).**
+
+So far you configured the static routes controller to egress cluster traffic for specific destinations only. But, you can also use the static routes controller to egress cluster traffic for multiple destinations (or public CIDRs) as well (some limitations apply though, and explained below).
+
+If changing the default gateway in the Linux routing table on each node to point to the custom egress gateway private IP, then you can route all outbound traffic via the custom gateway. But, there's an issue with this approach - the internal services running in the cluster which need access to DigitalOcean public API will not work anymore, thus making it unstable. Also, resources provisioned via Crossplane won't work as well.
+
+To solve the above issue, you can use another approach where you create static routes for all public CIDRs, except the ones which overlap with DigitalOcean API public endpoints. There is a ready to use sample provided in this tutorial which allows to achieve this goal, called [public-egress-example](assets/manifests/static-routes/public-egress-example.yaml).
+
+Usually, you need to set this only once, but please be mindful of what IP ranges you use. The static routes controller cannot distinguish if some ranges overlap or not, or if some are overlapping with DigitalOcean REST API public endpoints. Just to be safe, you can have a small cluster somewhere, which is safe to discard if something goes bad. The overlapping CIDRs are already commented in the provided [example](assets/manifests/static-routes/public-egress-example.yaml). You can subdivide those CIDRs even further, and remove the exact ranges that overlap with DigitalOcean REST API endpoints.
+
+Follow below steps to apply the public CIDRs example from this guide:
+
+1. Download the [public-egress.yaml](assets/manifests/static-routes/public-egress-example.yaml) file to your local machine:
+
+    ```shell
+    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/static-routes/public-egress-example.yaml
+    ```
+
+2. Open and inspect the manifest file, using a text editor of your choice (the default values are usually fine, unless you require something specific). For example, you can use [Visual Studio Code](https://code.visualstudio.com/), with YAML linting support:
+
+    ```shell
+    code public-egress-example.yaml
+    ```
+
+3. Apply the manifest using `kubectl`:
+
+    ```shell
+    kubectl apply -f public-egress-example.yaml
+    ```
+
+Now, check if all routes were created by SSH-ing to each node, and run `route -n`. All entries from the [public-egress.yaml](assets/manifests/static-routes/public-egress-example.yaml) manifest should be present. Also, you can use `kubectl describe` on the resource, and check its status.
+
+**Hint:**
+
+How to check all public IP address ranges used by DigitalOcean? There are two options available:
+
+1. The [ipinfo.io database](https://ipinfo.io/AS14061) of known public IP address ranges for DigitalOcean.
+2. The [SecOps-Institute](https://github.com/SecOps-Institute/Digitalocean-ASN-and-IPs-List) GitHub page (stores a list of all Digitalocean Servers using the ASN Numbers from RADB Lookups).
 
 ## Cleaning Up
 
 To clean up the operator and associated resources, please run the following `kubectl` command (make sure you're using the same release version as in the install step):
 
 ```shell
-kubectl delete -f deploy https://raw.githubusercontent.com/digitalocean/k8s-staticroute-operator/main/releases/v1/k8s-staticroute-operator-v1.0.0.yaml
+kubectl delete -f https://raw.githubusercontent.com/digitalocean/k8s-staticroute-operator/main/releases/v1/k8s-staticroute-operator-v1.0.0.yaml
 ```
 
 **Note:**
@@ -713,8 +830,14 @@ The output looks similar to:
 206.189.231.90
 ```
 
+The response should include the **original public IP of the worker node** where the `curl-test` Pod runs.
+
 ## Summary
 
-In this tutorial you learned how to use Crossplane to create and manage a NAT Gateway resource for your DOKS cluster. This way, external services (e.g. database), will see a static source IP in the packets coming from your DOKS cluster, thus making firewall rules management easier on the other end. Also, you learned how to use the static routes operator, to define specific routes for your applications.
+In this tutorial you learned how to use Crossplane to create and manage an egress Gateway resource for your DOKS cluster. This way, external services (e.g. database), will see a single source IP in the packets coming from your DOKS cluster, thus making firewall rules management easier on the other end. Also, you learned how to use the static routes operator, to manage specific routes for the egress functionality.
 
-TBD.
+Additional resources:
+
+- [Static Routes Operator](https://github.com/digitalocean/k8s-staticroute-operator) project page.
+- [Crossplane Guides](https://crossplane.io/docs/v1.9/guides/guides.html) page.
+- [DigitalOcean Droplets as NAT Gateways](https://docs.digitalocean.com/products/networking/vpc/how-to/configure-droplet-as-gateway/) tutorial.

@@ -2,7 +2,7 @@
 apiVersion: compute.do.crossplane.io/v1alpha1
 kind: Droplet
 metadata:
-  name: nat-gw-nyc1
+  name: egress-gw-nyc1
 spec:
   forProvider:
     region: nyc1

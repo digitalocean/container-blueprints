@@ -5,4 +5,4 @@ metadata:
 spec:
   destinations:
     - "34.160.111.145"
-  gateway: "10.116.0.4"
+  gateway: "<YOUR_NAT_GW_DROPLET_PRIVATE_IP_HERE>"

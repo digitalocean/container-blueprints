@@ -56,6 +56,8 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
 - [Step 7 - Testing the DOKS Cluster Egress Setup](#step-7---testing-the-doks-cluster-egress-setup)
 - [Step 8 - Configuring the Static Routes Controller to Egress All Cluster Traffic](#step-8---configuring-the-static-routes-controller-to-egress-all-cluster-traffic)
 - [Cleaning Up](#cleaning-up)
+  - [Uninstalling the Static Routes Operator](#uninstalling-the-static-routes-operator)
+  - [Deleting the Egress Gateway Droplet Resource](#deleting-the-egress-gateway-droplet-resource)
 - [Summary](#summary)
 
 ## Prerequisites
@@ -67,6 +69,7 @@ To complete this tutorial, you will need:
 3. Basic knowledge and experience with shell commands (e.g. `bash`).
 4. [Kubectl](https://kubernetes.io/docs/tasks/tools) CLI, to interact with Kubernetes clusters. Make sure it is configured to point to your DOKS cluster, as explained [here](https://docs.digitalocean.com/products/kubernetes/how-to/connect-to-cluster/).
 5. [Helm](https://www.helm.sh) (version 3.x is required), to install [Crossplane](https://crossplane.io/).
+6. [Doctl](https://docs.digitalocean.com/reference/doctl/how-to/install) for interacting with DigitalOcean API.
 
 ## Step 1 - Introducing Crossplane
 
@@ -95,13 +98,15 @@ spec:
     region: nyc1
     size: s-1vcpu-1gb
     image: ubuntu-20-04-x64
+    sshKeys:
+      - "7e:9c:b7:ee:74:16:a5:f7:62:12:b1:72:dc:51:71:85"
   providerConfigRef:
     name: do-provider-config
 ```
 
 Explanations for the above configuration:
 
-- `spec.forProvider` - defines all metadata required by the DigitalOcean provider to provision a new Droplet, such as: `region`, `size`, `image`, etc. Fields value map directly to the DigitalOcean Droplet specification.
+- `spec.forProvider` - defines all metadata required by the DigitalOcean provider to provision a new Droplet, such as: `region`, `size`, `image`, etc. Fields value map directly to the DigitalOcean Droplet specification. Also, if you have SSH keys deployed to your DigitalOcean account, you can specify the fingerprint in the `sshKeys` field from the spec.
 - `spec.providerConfigRef` - specifies a reference to a provider configuration CRD (explained in [Step 3 - Creating an Egress Gateway using Crossplane](#step-3---creating-an-egress-gateway-using-crossplane)). The provider configuration instructs the Droplet CRD how to connect to the [DigitalOcean REST API](https://docs.digitalocean.com/reference/api/api-reference/), and what credentials to use (e.g. DO API token).
 
 **Hint:**
@@ -327,7 +332,7 @@ To install the DigitalOcean provider used in this guide, please follow below ste
     Or, directly from the `container-blueprints` repo (if you're OK with the default values):
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/do-provider-install.yaml
+    kubectl apply -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/do-provider-install.yaml
     ```
 
 Finally, check if the provider was installed successfully in your DOKS cluster:
@@ -441,6 +446,8 @@ spec:
     region: nyc1
     size: s-1vcpu-1gb
     image: ubuntu-20-04-x64
+    sshKeys:
+      - "7e:9c:b7:ee:74:16:a5:f7:62:12:b1:72:dc:51:71:85"
     userData: |
       #!/usr/bin/env bash
       # Install dependencies
@@ -487,7 +494,11 @@ To create the egress gateway Droplet via Kubernetes, please follow below steps:
     code egress-gw-droplet.yaml
     ```
 
-3. Apply the manifest using `kubectl`:
+    **Hint:**
+
+    If you have specific SSH keys you want to add at Droplet creation time, you can do so by uncommenting the `sshKeys` field from the spec. Then, replace the `<>` placeholders with your SSH key fingerprint. To list the available SSH keys associated with your account and their fingerprint, you can do so by issuing the following command - `doctl compute ssh-key list`.
+
+3. Save and apply the manifest using `kubectl`:
 
     ```shell
     kubectl apply -f egress-gw-droplet.yaml
@@ -742,7 +753,7 @@ Follow below steps to apply the public CIDRs example from this guide:
     code public-egress-example.yaml
     ```
 
-3. Apply the manifest using `kubectl`:
+3. Replace the `<>` placeholders for the `gateway` spec field, then save and apply the manifest using `kubectl`:
 
     ```shell
     kubectl apply -f public-egress-example.yaml
@@ -758,6 +769,10 @@ How to check all public IP address ranges used by DigitalOcean? There are two op
 2. The [SecOps-Institute](https://github.com/SecOps-Institute/Digitalocean-ASN-and-IPs-List) GitHub page (stores a list of all Digitalocean Servers using the ASN Numbers from RADB Lookups).
 
 ## Cleaning Up
+
+If you want to clean up all the resources associated with this guide, you can do so for each major component, as follows.
+
+### Uninstalling the Static Routes Operator
 
 To clean up the operator and associated resources, please run the following `kubectl` command (make sure you're using the same release version as in the install step):
 
@@ -831,6 +846,16 @@ The output looks similar to:
 ```
 
 The response should include the **original public IP of the worker node** where the `curl-test` Pod runs.
+
+### Deleting the Egress Gateway Droplet Resource
+
+Removing the egress gateway droplet is just a matter of deleting the associated CRD (**please bear in mind that this process is destructive, and you cannot revert back**):
+
+```shell
+kubectl delete -f https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/crossplane/egress-gw-droplet.yaml
+```
+
+After running above command, the associated Droplet resource should be destroyed and removed from your DigitalOcean account.
 
 ## Summary
 

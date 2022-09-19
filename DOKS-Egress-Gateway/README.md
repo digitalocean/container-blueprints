@@ -58,6 +58,7 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
 - [Cleaning Up](#cleaning-up)
   - [Uninstalling the Static Routes Operator](#uninstalling-the-static-routes-operator)
   - [Deleting the Egress Gateway Droplet Resource](#deleting-the-egress-gateway-droplet-resource)
+- [FAQ](#faq)
 - [Summary](#summary)
 
 ## Prerequisites
@@ -856,6 +857,21 @@ kubectl delete -f https://raw.githubusercontent.com/digitalocean/container-bluep
 ```
 
 After running above command, the associated Droplet resource should be destroyed and removed from your DigitalOcean account.
+
+## FAQ
+
+1. **Q:** What Linux table ID does the static routes operator use?
+
+   **A:** The static routes operator acts on the main table (ID 254).
+2. **Q:** What happens if I define same routes or overlapping subnets via separate StaticRoute CRDs?
+
+   **A:** The static routes operator doesn't perform checks across CRDs (tracked via [#13](https://github.com/digitalocean/k8s-staticroute-operator/issues/13) on operator's GitHub repo). So, it is possible to override static routes via different CRDs.
+3. **Q:** Is it possible to override routes created by the system (e.g. Cilium)?
+
+   **A:** Yes, it is if updating existing CRDs. This doesn't happen when the CRD is created for the first time though. In the end, it's more safe to have a list of protected IPs/subnets defined in a ConfigMap. The operator will read the list at startup (or whenever it changes), and will not let users apply those routes (tracked via [#11](https://github.com/digitalocean/k8s-staticroute-operator/issues/11) on operator's GitHub repo).
+4. **Q:** Am I allowed to change the default gateway?
+
+   **A:** No. It is considered an unsafe operation which can cause trouble (tracked via [#6](https://github.com/digitalocean/k8s-staticroute-operator/issues/6) on operator's GitHub repo).
 
 ## Summary
 

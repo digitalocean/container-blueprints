@@ -33,24 +33,24 @@ In the tutorial, you will learn:
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [About the Blueprint Software Components](#about-the-blueprint-software-components)
-    - [Getting to Know Kaniko](#getting-to-know-kaniko)
-    - [Getting to Know Tekton](#getting-to-know-tekton)
-      - [Tasks](#tasks)
-      - [Pipelines](#pipelines)
-      - [Event Listeners and Triggers](#event-listeners-and-triggers)
-      - [Tekton Catalog](#tekton-catalog)
-      - [Tekton Dashboard](#tekton-dashboard)
-    - [Getting to Know Argo CD](#getting-to-know-argo-cd)
-      - [Applications](#applications)
-      - [Projects](#projects)
-    - [Getting to Know Knative](#getting-to-know-knative)
-      - [Serving Component](#serving-component)
-      - [Eventing Component](#eventing-component)
-    - [Getting to Know Cert-Manager](#getting-to-know-cert-manager)
-- [STEP 1: Prepare the Sample Application Requirements](#step-1-prepare-the-sample-application-requirements)
-    - [Forking the Sample Application Repo](#forking-the-sample-application-repo)
-    - [Creating a Dedicated Docker Registry](#creating-a-dedicated-docker-registry)
-    - [Creating a Dedicated Namespaces for Kubernetes Resources](#creating-a-dedicated-namespaces-for-kubernetes-resources)
+  - [Getting to Know Kaniko](#getting-to-know-kaniko)
+  - [Getting to Know Tekton](#getting-to-know-tekton)
+    - [Tasks](#tasks)
+    - [Pipelines](#pipelines)
+    - [Event Listeners and Triggers](#event-listeners-and-triggers)
+    - [Tekton Catalog](#tekton-catalog)
+    - [Tekton Dashboard](#tekton-dashboard)
+  - [Getting to Know Argo CD](#getting-to-know-argo-cd)
+    - [Applications](#applications)
+    - [Projects](#projects)
+  - [Getting to Know Knative](#getting-to-know-knative)
+    - [Serving Component](#serving-component)
+    - [Eventing Component](#eventing-component)
+  - [Getting to Know Cert-Manager](#getting-to-know-cert-manager)
+- [Step 1: Prepare the Sample Application Requirements](#step-1-prepare-the-sample-application-requirements)
+  - [Forking the Sample Application Repo](#fork-the-sample-application-repo)
+  - [Create a Dedicated Docker Registry](#create-a-digitalocean-container-registry)
+  - [Create a Dedicated Namespace for Kubernetes Resources](#create-a-dedicated-namespace-for-kubernetes-resources)
 - [Step 2: Install Cert-Manager](#step-2-install-cert-manager)
 - [Step 3: Install Tekton](#step-3-install-tekton)
   - [Provision Tekton Pipelines](#provision-tekton-pipelines)
@@ -432,7 +432,7 @@ For more information about Cert-Manager and its features, please visit the [offi
 
 Next, you will prepare the sample application repository used in this tutorial, as well as the [DigitalOcean Docker Registry](https://www.digitalocean.com/products/container-registry) used for storing application images. You will also create a dedicated Kubernetes namespace, to keep everything clean and well organized.
 
-## STEP 1: Prepare the Sample Application Requirements
+## Step 1: Prepare the Sample Application Requirements
 
 Before continuing with the tutorial, perform the following steps:
 
@@ -442,7 +442,7 @@ Before continuing with the tutorial, perform the following steps:
 
 ### Fork the Sample Application Repo
 
-To test the Tekton CI/CD flow presented in this blueprint, you need to fork the [tekton-sample-app](https://github.com/digitalocean/kubernetes-sample-apps) repository first. Also, create a GitHub Personal Access Token (PAT) with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe because you will need them later.
+To test the Tekton CI/CD flow presented in this blueprint, you need to fork the [kubernetes-sample-apps](https://github.com/digitalocean/kubernetes-sample-apps) repository first. Also, create a GitHub Personal Access Token (PAT) with the appropriate permissions, as explained [here](https://github.com/knative/docs/tree/main/code-samples/eventing/github-source#create-github-tokens). The PAT is needed to allow the GitHubSource CRD to manage webhooks for you automatically. Make sure to store the PAT credentials somewhere safe because you will need them later.
 
 ### Create a DigitalOcean Container Registry
 
@@ -565,7 +565,7 @@ kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previou
 kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/previous/v0.20.1/interceptors.yaml
 ```
 
-**Note:** Tekton Triggers requires Tekton Pipelines to be installed first as a dependency, as described in the [Provisioning Tekton Pipelines](#provisioning-tekton-pipelines) section. By default, it uses the `tekton-pipelines` namespace to create the required resources.
+**Note:** Tekton Triggers requires Tekton Pipelines to be installed first as a dependency, as described in the [Provision Tekton Pipelines](#provision-tekton-pipelines) section. By default, it uses the `tekton-pipelines` namespace to create the required resources.
 
 Next, check if Tekton Triggers was installed successfully:
 
@@ -1111,45 +1111,47 @@ The `DOKS-CI-CD/assets/manifests/tekton/` folder structure is explained below:
   - `tekton-argocd-build-deploy-trigger-template.yaml`: Contains the definition for the Tekton TriggerTemplate used this tutorial (in-depth explanations can be found inside).
 - `kustomization.yaml`: This is the main kustomization file (in-depth explanations can be found inside).
 
-**Note:** The `configs` folder used by Kustomize contains sensitive data. Use a `.gitignore` file to exclude commiting those files in your Git repository.
+**Note:** The `configs` folder used by Kustomize contains sensitive data. Use a `.gitignore` file to exclude committing those files in your Git repository.
 
-Create all required resources in your Kubernetes cluster, via Kustomize. Edit and save each property file from the `DOKS-CI-CD/assets/manifests/tekton/configs` subfolder, making sure to replace the `<>` placeholders accordingly. For example, you can use [VS Code](https://code.visualstudio.com):
+Steps to follow to create all required resources in your Kubernetes cluster, via Kustomize:
 
-```shell
-code DOKS-CI-CD/assets/manifests/tekton/configs/argocd/auth.env
+1. Edit and save each property file from the `DOKS-CI-CD/assets/manifests/tekton/configs` subfolder, making sure to replace the `<>` placeholders accordingly. For example, you can use [VS Code](https://code.visualstudio.com):
 
-code DOKS-CI-CD/assets/manifests/tekton/configs/docker/config.json
+   ```shell
+   code DOKS-CI-CD/assets/manifests/tekton/configs/argocd/auth.env
 
-code DOKS-CI-CD/assets/manifests/tekton/configs/github/pat.env
-```
+   code DOKS-CI-CD/assets/manifests/tekton/configs/docker/config.json
 
-  **Tips:**
+   code DOKS-CI-CD/assets/manifests/tekton/configs/github/pat.env
+   ```
 
-  - To obtain Argo CD admin password, use the following command:
+   **Tips:**
 
-    ```shell
-    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
-    ```
+   - To obtain Argo CD admin password, use the following command:
 
-  - To obtain your DigitalOcean Container Registry `read/write` credentials, you can use the following command and write results directly in the `config.json` file:
+       ```shell
+       kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+       ```
 
-    ```shell
-        doctl registry docker-config --read-write <YOUR_DOCKER_REGISTRY_NAME_HERE> > DOKS-CI-CD/assets/manifests/tekton/configs/docker/config.json
-    ```
+   - To obtain your DigitalOcean Container Registry `read/write` credentials, you can use the following command and write results directly in the `config.json` file:
 
-4. Edit the `configs/github/githubsource.yaml` file and replace the `<>` placeholders accordingly, then save changes. For example, you can use [VS Code](https://code.visualstudio.com):
+       ```shell
+           doctl registry docker-config --read-write <YOUR_DOCKER_REGISTRY_NAME_HERE> > DOKS-CI-CD/assets/manifests/tekton/configs/docker/config.json
+          ```
+
+2. Edit the `configs/github/githubsource.yaml` file and replace the `<>` placeholders accordingly, then save changes. For example, you can use [VS Code](https://code.visualstudio.com):
 
     ```shell
     code DOKS-CI-CD/assets/manifests/tekton/configs/github/githubsource.yaml
     ```
 
-5. Edit the `configs/docker/registry.yaml` file and replace the `<>` placeholders accordingly, then save changes. For example, you can use [VS Code](https://code.visualstudio.com):
+3. Edit the `configs/docker/registry.yaml` file and replace the `<>` placeholders accordingly, then save changes. For example, you can use [VS Code](https://code.visualstudio.com):
 
     ```shell
     code DOKS-CI-CD/assets/manifests/tekton/configs/docker/registry.yaml
     ```
 
-6. Finally, apply all changes via Kustomize (`-k` flag):
+4. Finally, apply all changes via Kustomize (`-k` flag):
 
     ```shell
     kubectl apply -k DOKS-CI-CD/assets/manifests/tekton
@@ -1222,28 +1224,28 @@ tkn eventlistener list -n doks-ci-cd
     tkn pipelinerun logs tekton-argocd-build-deploy-pipeline-run-zt6pt-r-r7wgw  -n doks-ci-cd
     ```
 
-Next, you will test the CI/CD pipeline flow by pushing some changes to the `tekton-sample-app` repository prepared in the [Forking the Sample Application Repo](#forking-the-sample-application-repo) step. Then, you will access the Tekton dashboard and watch a live demonstration of how the pipeline triggers automatically, and execution of steps.
+Next, you will test the CI/CD pipeline flow by pushing some changes to the `tekton-sample-app` repository prepared in the [Forking the Sample Application Repo](#fork-the-sample-application-repo) step. Then, you will access the Tekton dashboard and watch a live demonstration of how the pipeline triggers automatically, and execution of steps.
 
 ## Step 9: Test the CI/CD Setup
 
 You will begin testing the CI/CD flow by changing the `knative-service` resource from the application repo to point to your container registry.
 
-First, clone the git repository prepared in the [Forking the Sample Application Repo](#forking-the-sample-application-repo) step (make sure to replace the `<>` placeholders accordingly):
+First, clone the git repository prepared in the [Fork the Sample Application Repo](#fork-the-sample-application-repo) step (make sure to replace the `<>` placeholders accordingly):
 
 ```shell
-git clone git@github.com:<YOUR_GITHUB_USER_NAME_HERE>/tekton-sample-app.git
+git clone git@github.com:<YOUR_GITHUB_USER_NAME_HERE>/kubernetes-sample-apps.git
 ```
 
 Then, change the directory to your local clone:
 
 ```shell
-cd tekton-sample-app
+cd kubernetes-sample-apps
 ```
 
-Next, edit the `knative-service.yaml` manifest file to point to your Docker registry. For example you can use [VS Code](https://code.visualstudio.com) (make sure to replace the `<>` placeholders accordingly):
+Next, edit the [game-2048-example/knative-service.yaml](https://github.com/digitalocean/kubernetes-sample-apps/blob/master/game-2048-example/knative-service.yaml) manifest file to point to your Docker registry. For example you can use [VS Code](https://code.visualstudio.com) (make sure to replace the `<>` placeholders accordingly):
 
 ```shell
-code resources/knative-service.yaml
+code game-2048-example/knative-service.yaml
 ```
 
 Save and commit `knative-service.yaml` file changes to your GitHub repository. Next, port-forward the `tekton dashboard` service:

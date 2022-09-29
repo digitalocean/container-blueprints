@@ -59,6 +59,7 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
   - [Uninstalling the Static Routes Operator](#uninstalling-the-static-routes-operator)
   - [Deleting the Egress Gateway Droplet Resource](#deleting-the-egress-gateway-droplet-resource)
 - [FAQ](#faq)
+- [Troubleshooting](#troubleshooting)
 - [Summary](#summary)
 
 ## Prerequisites
@@ -872,6 +873,55 @@ After running above command, the associated Droplet resource should be destroyed
 4. **Q:** Am I allowed to change the default gateway?
 
    **A:** No. It is considered an unsafe operation which can cause trouble (tracked via [#6](https://github.com/digitalocean/k8s-staticroute-operator/issues/6) on operator's GitHub repo).
+
+## Troubleshooting
+
+### Kubectl Freezes on Object Deletion
+
+Whenever you delete a resource in Kubernetes, the associated controller puts a **finalizer** on the respective object in the metadata field. Bellow snippet shows the `Finalizers` field in the Static Route CRD:
+
+```yaml
+Name:         staticroutes.networking.digitalocean.com
+Namespace:    
+Labels:       <none>
+Annotations:  provider: digitalocean
+API Version:  apiextensions.k8s.io/v1
+Kind:         CustomResourceDefinition
+Metadata:
+  Creation Timestamp:  2022-09-19T15:05:34Z
+  Deletion Timestamp:  2022-09-27T14:51:10Z
+  Finalizers:
+    customresourcecleanup.apiextensions.k8s.io
+...
+```
+
+Kubernetes checks for the finalizer field first and if found, it will not delete the resource from the cluster until the associated controller finishes its job internally. If everything goes as planned, the controller removes the finalizer field from the object, and then and only then, Kubernetes moves forward with the actual deletion of the resource.
+
+**The main role of a finalizer is to allow the associated controller finish its job internally before actual object deletion.**
+
+If for some reason controller logic is unable to process the request and remove the finalizer field, the resource hangs in a `Terminating` state. Then, `kubectl` freezes because the Kubernetes API is not able to process the request.
+
+As a side effect, this warning is reported in the static routes controller logs:
+
+```text
+...
+[2022-09-27 14:58:11,405] kopf._core.reactor.o [WARNING ] Non-patchable resources will not be served: {staticroutes.v1.networking.digitalocean.com}
+...
+```
+
+**Why this happens and how do I recover?**
+
+It can happen for various reasons - one such example is when the controller is down because of a upgrade, hence it is unable to process requests. In this case the CRD remains in an inconsistent state, and the only way to recover is via:
+
+```shell
+kubectl patch staticroute <YOUR_STATIC_ROUTE_RESOURCE_NAME_HERE> -p '{"metadata": {"finalizers": []}}' --type merge
+```
+
+Above command removes the finalizer field from the resource, thus allowing Kubernetes proceed with actual object deletion. As a consequence, the Linux routing table still holds the old route entries. You have several options here:
+
+1. Manually delete the old entries. This can be a daunting task if many routes and nodes are implied.
+2. Restart the operator, and allow it to remove the finalizers. Issue the following command to perform a rollout for the static routes operator DaemonSet - `kubectl rollout restart -n static-routes ds/k8s-staticroute-operator`.
+3. As a last resort, re-deploy the static routes controller, and re-apply the original static route CRDs. Then, delete the CRDs. If everything goes as planned, the static routes controller takes care of the rest.
 
 ## Summary
 

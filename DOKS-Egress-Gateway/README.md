@@ -434,6 +434,8 @@ Next, you will take the final step and provision the egress gateway droplet for 
 
 **The egress gateway Droplet and DOKS cluster must be in the same VPC (or on the same network) for the whole setup to work !!!**
 
+Once the DigitalOcean Crossplane provider supports specifying the VPC our Droplet is deployed to we can include this in our manifest. Until this time you must [set your default VPC](https://docs.digitalocean.com/products/networking/vpc/how-to/set-default-vpc/), this will ensure the Egress Gateway Droplet is deployed to the same VPC as your Kubernetes worker nodes.
+
 Now that the DigitalOcean provider is installed and properly configured, you can proceed and create the actual Droplet resource to act as an egress gateway for the demo used this blueprint.
 
 The Crossplane Droplet CRD used in this blueprint looks like below:

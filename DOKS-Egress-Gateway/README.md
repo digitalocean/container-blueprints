@@ -434,8 +434,6 @@ Next, you will take the final step and provision the egress gateway droplet for 
 
 **The egress gateway Droplet and DOKS cluster must be in the same VPC (or on the same network) for the whole setup to work !!!**
 
-Once the DigitalOcean Crossplane provider supports specifying the VPC our Droplet is deployed to we can include this in our manifest. Until this time you must [set your default VPC](https://docs.digitalocean.com/products/networking/vpc/how-to/set-default-vpc/), this will ensure the Egress Gateway Droplet is deployed to the same VPC as your Kubernetes worker nodes.
-
 Now that the DigitalOcean provider is installed and properly configured, you can proceed and create the actual Droplet resource to act as an egress gateway for the demo used this blueprint.
 
 The Crossplane Droplet CRD used in this blueprint looks like below:
@@ -450,6 +448,7 @@ spec:
     region: nyc1
     size: s-1vcpu-1gb
     image: ubuntu-20-04-x64
+    vpcUuid: 4b5e125e-c52e-4578-93a7-01341ee927ac
     sshKeys:
       - "7e:9c:b7:ee:74:16:a5:f7:62:12:b1:72:dc:51:71:85"
     userData: |
@@ -498,9 +497,10 @@ To create the egress gateway Droplet via Kubernetes, please follow below steps:
     code egress-gw-droplet.yaml
     ```
 
-    **Hint:**
+    **Hints:**
 
-    If you have specific SSH keys you want to add at Droplet creation time, you can do so by uncommenting the `sshKeys` field from the spec. Then, replace the `<>` placeholders with your SSH key fingerprint. To list the available SSH keys associated with your account and their fingerprint, you can do so by issuing the following command - `doctl compute ssh-key list`.
+    * If you have specific SSH keys you want to add at Droplet creation time, you can do so by uncommenting the `sshKeys` field from the spec. Then, replace the `<>` placeholders with your SSH key fingerprint. To list the available SSH keys associated with your account and their fingerprint, you can do so by issuing the following command - `doctl compute ssh-key list`.
+    * The egress gateway Droplet and DOKS cluster must be in the same VPC. Use the following command to get your VPC ID - `doctl vpcs list` and set this by uncommenting the `vpcUuid` field from the spec.
 
 3. Save and apply the manifest using `kubectl`:
 

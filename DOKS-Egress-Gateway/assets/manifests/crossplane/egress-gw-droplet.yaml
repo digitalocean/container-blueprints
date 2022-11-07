@@ -8,6 +8,7 @@ spec:
     region: nyc1
     size: s-1vcpu-1gb
     image: ubuntu-20-04-x64
+    # vpcUuid: "<YOUR_VPC_ID_HERE>"
     # sshKeys:
     #   - "<YOUR_PUBLIC_SSH_KEY_FINGERPRINT_HERE>"
     userData: |

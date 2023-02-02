@@ -11,12 +11,12 @@ rules:
 - apiGroups: [""]
   resources: ["services","endpoints","pods"]
   verbs: ["get","watch","list"]
-- apiGroups: ["extensions","networking.k8s.io"]
-  resources: ["ingresses"] 
+- apiGroups: ["networking","networking.k8s.io"]
+  resources: ["ingresses"]
   verbs: ["get","watch","list"]
 - apiGroups: [""]
   resources: ["nodes"]
-  verbs: ["list"]
+  verbs: ["get","watch","list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -51,13 +51,12 @@ spec:
       serviceAccountName: external-dns
       containers:
       - name: external-dns
-        image: k8s.gcr.io/external-dns/external-dns:v0.8.0
+        image: k8s.gcr.io/external-dns/external-dns:v0.13.1
         args:
-        - --source=service 
+        - --source=service
         - --domain-filter=kubenugget.dev
         - --provider=digitalocean
         env:
         - name: DO_TOKEN
           value: "DIGITALOCEAN_API_TOKEN"
 ---
-

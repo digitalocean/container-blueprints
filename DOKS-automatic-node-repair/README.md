@@ -1,5 +1,7 @@
 # Replacing Unhealthy DOKS Cluster Nodes Automatically
 
+Cluster nodes can sometimes become unhealthy in case when the kubelet service dies or becomes unresponsive. This can happen for a number of reasons such as when the worker node is overloaded or due to unexpected networking issues. High load can be caused if you do not follow good practices for Pod resources limits, such as not setting them at all or using inadequate values.
+
 This tutorial provides an automated way to recycle unhealthy nodes in a DigitalOcean Kubernetes (DOKS) cluster.  When a node in a DOKS cluster is unhealthy, it is a manual and cumbersome process to replace the node. Without replacing the nodes, the cluster will operate at lower capacity because the unhealthy nodes will not run any Pods. 
 
 You can automatically replace unhealthy nodes using one of the following applications:
@@ -363,7 +365,7 @@ As you can see, the node was recycled.
 
 ## Summary
 
-In this tutorial, we automatically recover cluster nodes in case the kubelet service dies or becomes unresponsive. This can happen when the worker node is overloaded or due to unexpected networking issues. High load can be caused if you do not follow good practices for Pod resources limits, such as not setting them at all or using inadequate values.
+In this tutorial, we automatically recover cluster nodes in case the kubelet service dies or becomes unresponsive.  It's also important to try to avoid automatic node recyling by remembering to use effective monitoring of node health and avoid nodes being overloaded. Following good practices for Pod resources limits, such as setting limits and using adequate values can help avoid high load nodes.
 
 ## Contributing
 

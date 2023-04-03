@@ -138,7 +138,7 @@ Now that we have successfully deployed `Digital Mobius,`. Let us check out the u
 
 ## Automatic Node Repair Logic
 
- A node is considered unhealthy if the [node condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is `Ready` and the status is `False` or `Unknown.` Then, the application recreates the affected node(s) using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/delete_kubernetes_node).
+ A node is considered unhealthy if the [node condition](https://kubernetes.io/docs/concepts/architecture/nodes/#condition) is `Ready` and the status is `False` or `Unknown.` Then, the application recreates the affected node(s) using the DigitalOcean [Delete Kubernetes Node API](https://docs.digitalocean.com/reference/api/api-reference/#operation/kubernetes_delete_node).
 
 The following diagram shows how Digital Mobius checks the worker node(s) state:
 

@@ -24,7 +24,7 @@ There are three key aspects related to egress functionality:
 2. NAT outgoing.
 3. Egress gateways.
 
-Restricting egress (or outgoing) traffic is not covered in this blueprint, but in essence is a way of restricting outbound traffic for cluster Pods. Itt can be achieved via network policies, or firewalls. Firewall is the most common use case, where you allow connections only to a particular external IP address range, or to external services. Firewalls cannot distinguish between individual Pods, so the rules apply equally to all.
+Restricting egress (or outgoing) traffic is not covered in this blueprint, but in essence is a way of restricting outbound traffic for cluster Pods. It can be achieved via network policies, or firewalls. Firewall is the most common use case, where you allow connections only to a particular external IP address range, or to external services. Firewalls cannot distinguish between individual Pods, so the rules apply equally to all.
 
 To build an egress gateway you need NAT functionality, implemented using a NAT gateway In essence, a NAT gateway sits at the edge of your private network (or VPC), through which outbound (or egress) traffic flows to the public internet. The main role of NAT, which stands for Network Address Translation, is to make network packets routable outside your private network (or VPC). The process needs to work in reverse order as well, meaning incoming response packets, need to be routed back to the originating private IP inside your VPC.
 

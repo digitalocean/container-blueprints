@@ -187,7 +187,6 @@ The output looks similar to:
 NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
 crossplane                 1/1     1            1           3d19h
 crossplane-rbac-manager    1/1     1            1           3d19h
-provider-do-cad6fc11e8d5   1/1     1            1           3d19h
 ```
 
 All pods must be up and running (check the `READY` column). In the next step, a short introduction is given about the static routes operator used in this guide.

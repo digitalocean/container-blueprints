@@ -79,8 +79,8 @@ Digital Mobius can be easily deployed using the [Helm chart](https://github.com/
 
     ```bash
     helm install digital-mobius digital-mobius/digital-mobius --version 0.1.4 \
-      --set environmentVariables.DIGITALOCEAN_TOKEN="$DIGITAL_OCEAN_TOKEN" \
-      --set environmentVariables.DIGITALOCEAN_CLUSTER_ID="$DIGITAL_OCEAN_CLUSTER_ID" \
+      --set environmentVariables.DIGITAL_OCEAN_TOKEN="$DIGITAL_OCEAN_TOKEN" \
+      --set environmentVariables.DIGITAL_OCEAN_CLUSTER_ID="$DIGITAL_OCEAN_CLUSTER_ID" \
       --set enabledFeatures.disableDryRun=true \
       --namespace maintenance --create-namespace
     ```

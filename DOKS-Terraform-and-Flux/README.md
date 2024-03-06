@@ -8,7 +8,7 @@ Flux is used for managing the continuous delivery of applications inside a DOKS 
 
 The following diagram illustrates the DOKS cluster, Terraform and Flux setup:
 
-![TF-DOKS-FLUX-CD](https://github.com/digitalocean/container-blueprints/blob/main/create-doks-with-terraform-flux/assets/img/tf_doks_fluxcd_flow.png?raw=true)
+![TF-DOKS-FLUX-CD](assets/img/tf_doks_fluxcd_flow.png)
 
 **Note**: Following the steps below will result in charges for the use of DigitalOcean resources. [Delete the resources](#step-7-deleting-the-resources) at the end of this tutorial to avoid being billed for additional resources.
 

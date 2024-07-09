@@ -4,4 +4,4 @@ kind: Provider
 metadata:
   name: provider-do
 spec:
-  package: "crossplane/provider-digitalocean:v0.2.0-rc.0.42.g0932045-main"
+  package: "xpkg.upbound.io/digitalocean/provider-digitalocean:v0.2.0"

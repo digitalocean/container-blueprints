@@ -150,7 +150,7 @@ Crossplane is available as a Helm chart for easy installation, as well as for fu
 3. Deploy Crossplane to your DOKS cluster:
 
     ```shell
-    HELM_CHART_VERSION="1.9.0"
+    HELM_CHART_VERSION="1.16.0"
 
     helm install crossplane crossplane-stable/crossplane \
       --version "${HELM_CHART_VERSION}" \
@@ -160,7 +160,7 @@ Crossplane is available as a Helm chart for easy installation, as well as for fu
 
     **Note:**
 
-    A specific version for the Crossplane Helm chart is used. In this case `1.9.0` is picked, which maps to the `1.9.0` version of the application. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via `Git`.
+    A specific version for the Crossplane Helm chart is used. In this case `1.16.0` is picked, which maps to the `1.16.0` version of the application. It’s good practice in general, to lock on a specific version. This helps to have predictable results, and allows versioning control via `Git`.
 
 Now, check if the Crossplane Helm chart was deployed to your cluster:
 
@@ -303,7 +303,7 @@ kind: Provider
 metadata:
   name: provider-do
 spec:
-  package: "crossplane/provider-digitalocean:v0.1.0"
+  package: "xpkg.upbound.io/digitalocean/provider-digitalocean:v0.2.0"
 ```
 
 Explanations for the above configuration:
@@ -349,11 +349,7 @@ NAME          INSTALLED   HEALTHY   PACKAGE                                     
 provider-do   True        True      crossplane/provider-digitalocean:v0.2.0-rc.0.42.g0932045-main   4d17h
 ```
 
-The `INSTALLED` and `HEALTHY` columns should both report `True`. Also, the `PACKAGE` should list the specific version used by the container-blueprints repo - `crossplane/provider-digitalocean:v0.2.0-rc.0.42.g0932045-main`.
-
-**Important note:**
-
-The provider package CRD used in the `containe-blueprints` repository is using a specific release from the main branch of the [crossplane-contrib/provider-digitalocean](https://github.com/crossplane-contrib/provider-digitalocean) repository. This is due to the fact that it contains some important fixes merged from the following PRs - [#60](https://github.com/crossplane-contrib/provider-digitalocean/pull/60), and [#61](https://github.com/crossplane-contrib/provider-digitalocean/pull/61).
+The `INSTALLED` and `HEALTHY` columns should both report `True`.
 
 Next, you will learn how to configure the DigitalOcean provider to have access to the DigitalOcean REST API, and manage resources on your behalf.
 
@@ -931,5 +927,5 @@ In this tutorial you learned how to use Crossplane to create and manage an egres
 Additional resources:
 
 - [Static Routes Operator](https://github.com/digitalocean/k8s-staticroute-operator) project page.
-- [Crossplane Guides](https://crossplane.io/docs/v1.9/guides/guides.html) page.
+- [Crossplane Docs](https://docs.crossplane.io/latest/) page.
 - [DigitalOcean Droplets as NAT Gateways](https://docs.digitalocean.com/products/networking/vpc/how-to/configure-droplet-as-gateway/) tutorial.

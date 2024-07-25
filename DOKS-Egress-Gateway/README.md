@@ -54,7 +54,6 @@ Below is a diagram, showing the main setup for egressing DOKS cluster traffic to
   - [Provisioning the Egress Gateway Droplet Resource](#provisioning-the-egress-gateway-droplet-resource)
 - [Step 6 - Configuring Static Routes for your Egress Gateway](#step-6---configuring-static-routes-for-your-egress-gateway)
 - [Step 7 - Testing the DOKS Cluster Egress Setup](#step-7---testing-the-doks-cluster-egress-setup)
-- [Step 8 - Configuring the Static Routes Controller to Egress All Cluster Traffic](#step-8---configuring-the-static-routes-controller-to-egress-all-cluster-traffic)
 - [Cleaning Up](#cleaning-up)
   - [Uninstalling the Static Routes Operator](#uninstalling-the-static-routes-operator)
   - [Deleting the Egress Gateway Droplet Resource](#deleting-the-egress-gateway-droplet-resource)
@@ -723,49 +722,6 @@ The resulting IP address that gets printed should be the `public IP` address tha
 ```shell
 kubectl get droplet egress-gw-nyc1 -o jsonpath="{.status.atProvider.publicIPv4}"
 ```
-
-## Step 8 - Configuring the Static Routes Controller to Egress All Cluster Traffic
-
-**VERY IMPORTANT TO REMEMBER:**
-
-**You need to make sure to NOT ADD static routes containing CIDRs which overlap with DigitalOcean REST API endpoints (including DOKS) ! Doing so, will affect DOKS cluster functionality (Kubelets), and/or other internal services (e.g. Crossplane).**
-
-So far you configured the static routes controller to egress cluster traffic for specific destinations only. But, you can also use the static routes controller to egress cluster traffic for multiple destinations (or public CIDRs) as well (some limitations apply though, and explained below).
-
-If changing the default gateway in the Linux routing table on each node to point to the custom egress gateway private IP, then you can route all outbound traffic via the custom gateway. But, there's an issue with this approach - the internal services running in the cluster which need access to DigitalOcean public API will not work anymore, thus making it unstable. Also, resources provisioned via Crossplane won't work as well.
-
-To solve the above issue, you can use another approach where you create static routes for all public CIDRs, except the ones which overlap with DigitalOcean API public endpoints. There is a ready to use sample provided in this tutorial which allows to achieve this goal, called [public-egress-example](assets/manifests/static-routes/public-egress-example.yaml).
-
-Usually, you need to set this only once, but please be mindful of what IP ranges you use. The static routes controller cannot distinguish if some ranges overlap or not, or if some are overlapping with DigitalOcean REST API public endpoints. Just to be safe, you can have a small cluster somewhere, which is safe to discard if something goes bad. The overlapping CIDRs are already commented in the provided [example](assets/manifests/static-routes/public-egress-example.yaml). You can subdivide those CIDRs even further, and remove the exact ranges that overlap with DigitalOcean REST API endpoints.
-
-Follow below steps to apply the public CIDRs example from this guide:
-
-1. Download the [public-egress.yaml](assets/manifests/static-routes/public-egress-example.yaml) file to your local machine:
-
-    ```shell
-    curl -O https://raw.githubusercontent.com/digitalocean/container-blueprints/main/DOKS-Egress-Gateway/assets/manifests/static-routes/public-egress-example.yaml
-    ```
-
-2. Open and inspect the manifest file, using a text editor of your choice (the default values are usually fine, unless you require something specific). For example, you can use [Visual Studio Code](https://code.visualstudio.com/), with YAML linting support:
-
-    ```shell
-    code public-egress-example.yaml
-    ```
-
-3. Replace the `<>` placeholders for the `gateway` spec field, then save and apply the manifest using `kubectl`:
-
-    ```shell
-    kubectl apply -f public-egress-example.yaml
-    ```
-
-Now, check if all routes were created by SSH-ing to each node, and run `route -n`. All entries from the [public-egress.yaml](assets/manifests/static-routes/public-egress-example.yaml) manifest should be present. Also, you can use `kubectl describe` on the resource, and check its status.
-
-**Hint:**
-
-How to check all public IP address ranges used by DigitalOcean? There are two options available:
-
-1. The [ipinfo.io database](https://ipinfo.io/AS14061) of known public IP address ranges for DigitalOcean.
-2. The [SecOps-Institute](https://github.com/SecOps-Institute/Digitalocean-ASN-and-IPs-List) GitHub page (stores a list of all Digitalocean Servers using the ASN Numbers from RADB Lookups).
 
 ## Cleaning Up
 
